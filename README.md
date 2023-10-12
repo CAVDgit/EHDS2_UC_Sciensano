@@ -54,7 +54,7 @@ For the purpose of the use case, the pipeline is composed of several scripts :
 1. **Data quality script** (Quarto R) -> output : html document
 2. **Data analysis script** (R) -> output : csv file containing only aggregate data
 3. **Node report script** (Quarto R) -> output : html document & pdf
-4. **Comparative analysis** script (Quarto R) -> output : html document & pdf
+4. **Comparative analysis script** (Quarto R) -> output : html document & pdf
 
 ##### Data Quality script
 tba
