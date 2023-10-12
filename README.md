@@ -50,4 +50,20 @@ This stepwise approach includes the following:
 8. Finally, producing the final report based on the meta-analysis of the collection of local outputs from all the nodes.
 
 #### Description of the files
+For the purpose of the use case, the pipeline is composed of several scripts : 
+1. Data quality script (Quarto R) -> output : html document
+2. Data analysis script (R) -> output : csv file containing only aggregate data
+3. Node report script (Quarto R) -> output : html document & pdf
+4. Comparative analysis script (Quarto R) -> output : html document & pdf
 
+##### Data Quality script
+tba
+
+##### Data analysis script
+tba
+
+##### Node report script
+tba
+
+##### Comparative analysis script
+tba
