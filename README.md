@@ -56,7 +56,7 @@ For the purpose of the use case, the pipeline is composed of several scripts :
 3. Node report script (Quarto R) -> output : html document & pdf
 4. Comparative analysis script (Quarto R) -> output : html document & pdf
 
-##### Data Quality script
+##### $${\color{red}Data Quality script}$$
 tba
 
 ##### Data analysis script
