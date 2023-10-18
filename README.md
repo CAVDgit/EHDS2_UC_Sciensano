@@ -51,16 +51,22 @@ This stepwise approach includes the following:
 
 #### Description of the files
 For the purpose of the use case, the pipeline is composed of several scripts : 
-1. **Data quality script** (Quarto R) -> output : html document
-2. **Data analysis script** (R) -> output : csv file containing only aggregate data
-3. **Node report script** (Quarto R) -> output : html document & pdf
-4. **Comparative analysis script** (Quarto R) -> output : html document & pdf
+1. **Synthetic Data file** (csv)
+2. **Data quality script** (Quarto R) -> output : html document
+3. **Data analysis script** (R) -> output : csv file containing only aggregate data
+4. **Node report script** (Quarto R) -> output : html document & pdf
+5. **Comparative analysis script** (Quarto R) -> output : html document & pdf
 
 ##### Synthetic data ```use_case_1_synthetic_data_10K_individuals.csv```
+Synthetic data generated based on the common data model defined in the use case with the nodes.
 
 ##### Data Quality script ```EHDS2_pilot_UC1_quality_report.qmd```
+Evaluation of data according to the common data model.
+It has to be compliant with secure processing environnement of nodes (tba)
 
 ##### Data analysis script ```EDHS2_pilot_UC1_aggregate_data_node.R```
+Analysis script that will generated the aggregate output for a node.
+It has to be compliant with secure processing environnement of nodes (tba)
 
 ##### Node report script
 tba
