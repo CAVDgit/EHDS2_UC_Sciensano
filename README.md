@@ -62,8 +62,8 @@ Synthetic data generated based on the common data model defined in the use case 
 
 ##### Data Quality script ```EHDS2_pilot_UC1_quality_report.qmd```
 Evaluation of data according to the common data model.
-Based on the quality script design in [BY-COVID](https://github.com/MarjanMeurisse/BY-COVID_WP5_T5.2_baseline-use-case)
-It has to be compliant with secure processing environnement of nodes (tba)
+Based on the quality script design in [BY-COVID](https://github.com/MarjanMeurisse/BY-COVID_WP5_T5.2_baseline-use-case).
+It has to be compliant with secure processing environnement of nodes (tba).
 
 ##### Data analysis script ```EDHS2_pilot_UC1_aggregate_data_node.R```
 Analysis script that will generated the aggregate output for a node.
