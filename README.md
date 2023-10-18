@@ -56,11 +56,11 @@ For the purpose of the use case, the pipeline is composed of several scripts :
 3. **Node report script** (Quarto R) -> output : html document & pdf
 4. **Comparative analysis script** (Quarto R) -> output : html document & pdf
 
-##### Synthetic data use_case_1_synthetic_data_10K_individuals.csv
+##### Synthetic data ```use_case_1_synthetic_data_10K_individuals.csv```
 
-##### Data Quality script EHDS2_pilot_UC1_quality_report.qmd
+##### Data Quality script ```EHDS2_pilot_UC1_quality_report.qmd```
 
-##### Data analysis script EDHS2_pilot_UC1_aggregate_data_node.R
+##### Data analysis script ```EDHS2_pilot_UC1_aggregate_data_node.R```
 
 ##### Node report script
 tba
