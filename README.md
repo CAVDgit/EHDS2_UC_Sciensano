@@ -42,35 +42,36 @@ can perform meta-analyses with those intermediate outputs if required.
 This stepwise approach includes the following:
 1. Formalising the Research Question,
 2. Iteratively building a Common Data Model specification with the contribution of all participants in each research question,
-3. Generating a synthetic dataset following the specifications of the agreed common data model,
-4. Iteratively developing and testing the scripts (code) implementing the Data Quality Analysis using the synthetic dataset, tailored to the quality requirements of the research question,
-5. Iteratively developing and testing the scripts (code) of the statistical analysis using the synthetic dataset,
-6. Deploying the use case in each participant node by distributing the common data model, the synthetic dataset (as data example), and the data quality analysis and statistical analysis script in a reproducible way,
-7. Collecting the local (on-premise) outputs produced by the local analysis of each participant nodes to summarise them by the use case leader,
-8. Finally, producing the final report based on the meta-analysis of the collection of local outputs from all the nodes.
+3. Generating a mockup dataset following the specifications of the agreed common data model,
+4. Iteratively developing and testing the scripts (code) implementing the Data Quality Analysis using the mockup dataset, tailored to the quality requirements of the research question,
+5. Iteratively developing and testing the scripts (code) of the statistical analysis using the mockup dataset,
+6. Deploying the use case in each participant node by distributing the common data model, the mockup dataset (as data example), and the data quality analysis and statistical analysis script in a reproducible way,
+7. Finally, producing an analysis report in all the nodes.
 
 #### Description of the files
 For the purpose of the use case, the pipeline is composed of several scripts : 
-1. **Synthetic Data file** (csv)
+1. **Mockup data file** (csv)
 2. **Data quality script** (Quarto R) -> output : html document
 3. **Data analysis script** (R) -> output : csv file containing only aggregate data
 4. **Node report script** (Quarto R) -> output : html document & pdf
-5. **Comparative analysis script** (Quarto R) -> output : html document & pdf
 
-##### Synthetic data ```use_case_1_synthetic_data_10K_individuals.csv```
-Synthetic data generated based on the common data model defined in the use case with the nodes.
+##### Mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv```
+Belgium mockup data compliant with the common data model defined in the use case. The data are fictitious without any realistic correlations.
 
-##### Data Quality script ```EHDS2_pilot_UC1_quality_report.qmd```
-Evaluation of data according to the common data model.
-Based on the quality script design in [BY-COVID](https://github.com/MarjanMeurisse/BY-COVID_WP5_T5.2_baseline-use-case).
-It has to be compliant with secure processing environnement of nodes (tba).
+##### Data Quality script ```EHDS2_pilot_UC_1_data_quality.qmd```
+Evaluation of the compliance of individual data with the common data model. Based on the quality script designed by [BY-COVID](https://github.com/MarjanMeurisse/BY-COVID_WP5_T5.2_baseline-use-case).
 
-##### Data analysis script ```EDHS2_pilot_UC1_aggregate_data_node.R```
-Analysis script that will generated the aggregate output for a node.
-It has to be compliant with secure processing environnement of nodes (tba)
+##### Data analysis script ```EHDS2_pilot_UC_2_data_analysis.R```
+Analysis script that will generate the aggregate output for a node.
 
-##### Node report script
-tba
+##### Node report script ```EHDS2_pilot_UC_3_final_report.qmd```
+Report script that will generate an interactive HTML document addressing the research questions.
 
-##### Comparative analysis script
-tba
+#### Instructions
+  1. Import the data quality and data analysis scripts into the secure processing environment.
+  2. Run the data quality script on the individual data to get an overview of the quality of your data.
+  3. If the data quality is acceptable, open the data analysis script and update the following fields: country, threshold, file_path.
+  4. Execute the script to generate aggregated data that can be taken outside the secure processing environment.
+  5. Place the aggregated output in the same folder as the final report script and execute it.
+
+
