@@ -49,14 +49,14 @@ This stepwise approach includes the following:
 7. Finally, producing an analysis report in all the nodes.
 
 #### Description of the files
-For the purpose of the use case, the pipeline is composed of several scripts : 
-1. **Mockup data file** (csv)
-2. **Data quality script** (Quarto R) -> output : html document
-3. **Data analysis script** (R) -> output : csv file containing only aggregate data
-4. **Node report script** (Quarto R) -> output : html document & pdf
+For the purpose of the use case, the pipeline is composed of several scripts:
+1. **Data quality script** (Quarto R) -> output : html document
+2. **Data analysis script** (R) -> output : csv file containing only aggregate data
+3. **Node report script** (Quarto R) -> output : html document
+4. **Shape file** (shp) -> used by the Node report script to generate the choropleth maps.
+5. **Mockup data file** (csv) -> Mockup data given as an example for the use case
 
-##### Mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv```
-Belgium mockup data compliant with the common data model defined in the use case. The data are fictitious without any realistic correlations.
+Files in part1 folder: These scripts should be executed on the individual data in the secure processing environment.
 
 ##### Data Quality script ```EHDS2_pilot_UC_1_data_quality.qmd```
 Evaluation of the compliance of individual data with the common data model. Based on the quality script designed by [BY-COVID](https://github.com/MarjanMeurisse/BY-COVID_WP5_T5.2_baseline-use-case).
@@ -64,14 +64,37 @@ Evaluation of the compliance of individual data with the common data model. Base
 ##### Data analysis script ```EHDS2_pilot_UC_2_data_analysis.R```
 Analysis script that will generate the aggregate output for a node.
 
+Files in **part2** folder :
 ##### Node report script ```EHDS2_pilot_UC_3_final_report.qmd```
 Report script that will generate an interactive HTML document addressing the research questions.
 
+##### Shape dimensions file ```EHDS2_pilot_UC1_nuts_code.shp```
+Dependency necessary for the node report script.
+
+
 #### Instructions
-  1. Import the data quality and data analysis scripts into the secure processing environment.
-  2. Run the data quality script on the individual data to get an overview of the quality of your data.
-  3. If the data quality is acceptable, open the data analysis script and update the following fields: country, threshold, file_path.
-  4. Execute the script to generate aggregated data that can be taken outside the secure processing environment.
-  5. Place the aggregated output in the same folder as the final report script and execute it.
+The analytical pipeline is divided into 2 parts. The part1 should be executed in the secure processing environment because it will use sensitive data to generate non-sensitive data. Part2 should be executed outside the secure processing environment because it requires more dependencies that may not always be available inside the secure processing environment.
 
+Part1:
+  1. Import the data quality ```EHDS2_pilot_UC_1_data_quality.qmd``` and data analysis ```EHDS2_pilot_UC_2_data_analysis.R``` scripts into the secure processing environment.
+  2. Place in the same folder: your individual data (csv) compliant with the common data model, the quality script, and the data analysis script.
+  3. Data quality script ```EHDS2_pilot_UC_1_data_quality.qmd```:
+     - Open the script using RStudio and set the working directory to the actual location of the script.
+     - Modify the filename in the script (file_path <- "EHDS2_pilot_UC1_mockup_data_BE.csv") to the actual filename of your csv file.
+     - Execute the script to generate the HTML quality report.
+  4. Data analysis script ```EHDS2_pilot_UC_2_data_analysis.R```:
+     - Open the script using RStudio and set the working directory to the actual location of the script.
+     - Modify the filename in the script (default: file_path <- "EHDS2_pilot_UC1_mockup_data_BE.csv") to the actual filename of your csv file.
+     - Set the node country (default: country <- 'BE'). Possible value : BE, FR, FI, HU, HR, DK.
+     - (optional) Adapt the cut-off/threshold to exclude aggregated data with a number of individuals lower than this threshold (default: threshold <- 10).
+     - Execute the script to generate the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```) that can be exported outside the secure processing environment.
 
+Part2:
+  1. Place in the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape file ```EHDS2_pilot_UC1_nuts_code.shp```.
+  2. Open the script using RStudio and set the working directory to the actual location of the script.
+  3. Execute the script to generate the final HTML report.
+
+The analytical pipeline can be executed for testing purposes using the mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv``` provided on this github.
+
+##### Mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv```
+Belgium mockup data compliant with the common data model defined in the use case is provided to showcase the analytical pipeline. The data are fictitious without any realistic correlations. It contains 200k individuals with random empty values.
