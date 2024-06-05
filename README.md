@@ -53,7 +53,7 @@ For the purpose of the use case, the pipeline is composed of several scripts:
 1. **Data quality script** (Quarto R) -> output : html document
 2. **Data analysis script** (R) -> output : csv file containing only aggregate data
 3. **Node report script** (Quarto R) -> output : html document
-4. **Shape file** (shp) -> used by the Node report script to generate the choropethe maps.
+4. **Shape file** (shp) -> used by the Node report script to generate the choropleth maps.
 5. **Mockup data file** (csv) -> Mockup data given as an example for the use case
 
 Files in part1 folder: These scripts should be executed on the individual data in the secure processing environment.
