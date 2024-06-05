@@ -73,31 +73,28 @@ Dependency necessary for the node report script.
 
 
 #### Instructions
-The analytical pipeline is divided into 2 parts.
-The part1 should be executated into the secure processing environnement because it will use sensitive data to generate non-sensitive data.
-The part2 should be executated outside the secure processing environnement because it requires more depedencies that may not always be available inside secure processing environnement.
+The analytical pipeline is divided into 2 parts. The part1 should be executed in the secure processing environment because it will use sensitive data to generate non-sensitive data. Part2 should be executed outside the secure processing environment because it requires more dependencies that may not always be available inside the secure processing environment.
 
 Part1:
   1. Import the data quality ```EHDS2_pilot_UC_1_data_quality.qmd``` and data analysis ```EHDS2_pilot_UC_2_data_analysis.R``` scripts into the secure processing environment.
-  2. Place into the same folder : your individual data (csv) compliant to the command data model, the quality script and the data analysis script.
+  2. Place in the same folder: your individual data (csv) compliant with the common data model, the quality script, and the data analysis script.
   3. Data quality script ```EHDS2_pilot_UC_1_data_quality.qmd```:
      - Open the script using RStudio and set the working directory to the actual location of the script.
      - Modify the filename in the script (file_path <- "EHDS2_pilot_UC1_mockup_data_BE.csv") to the actual filename of your csv file.
      - Execute the script to generate the HTML quality report.
   4. Data analysis script ```EHDS2_pilot_UC_2_data_analysis.R```:
-     - Open the script using RStudio and set the working set the working directory to the actual location of the script.
+     - Open the script using RStudio and set the working directory to the actual location of the script.
      - Modify the filename in the script (default: file_path <- "EHDS2_pilot_UC1_mockup_data_BE.csv") to the actual filename of your csv file.
      - Set the node country (default: country <- 'BE'). Possible value : BE, FR, FI, HU, HR, DK.
-     - (optional) Adapt the cut-off/threshold to excluded aggregated data with number of individual inferior to this threshold. (default: threshold <- 10)
-     - Execute the script to generated the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```) that can be exported outside the secure processing environnement.
+     - (optional) Adapt the cut-off/threshold to exclude aggregated data with a number of individuals lower than this threshold (default: threshold <- 10).
+     - Execute the script to generate the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```) that can be exported outside the secure processing environment.
 
 Part2:
-  1. Place into the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape file ```EHDS2_pilot_UC1_nuts_code.shp```.
+  1. Place in the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape file ```EHDS2_pilot_UC1_nuts_code.shp```.
   2. Open the script using RStudio and set the working directory to the actual location of the script.
   3. Execute the script to generate the final HTML report.
 
-The analytical can be executated for testing purpose using the mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv``` provided on this github.
+The analytical pipeline can be executed for testing purposes using the mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv``` provided on this github.
 
 ##### Mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv```
-Belgium mockup data compliant with the common data model defined in the use case are provided to showcase the analytical pipeline. 
-The data are fictitious without any realistic correlations. It contains 200k individuals with random empty values.
+Belgium mockup data compliant with the common data model defined in the use case is provided to showcase the analytical pipeline. The data are fictitious without any realistic correlations. It contains 200k individuals with random empty values.
