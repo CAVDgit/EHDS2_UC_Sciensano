@@ -54,7 +54,8 @@ For the purpose of the use case, the pipeline is composed of several scripts:
 2. **Data analysis script** (R) -> output : csv file containing only aggregate data
 3. **Node report script** (Quarto R) -> output : html document
 4. **Shape file** (shp) -> used by the Node report script to generate the choropleth maps.
-5. **Mockup data file** (csv) -> Mockup data given as an example for the use case
+5. **Mockup data file** (csv) -> Mockup data given as an example for the use case.
+6. **Mockup final report** (html) -> Report based on mockup data.
 
 Files in part1 folder: These scripts should be executed on the individual data in the secure processing environment.
 
@@ -98,3 +99,6 @@ The analytical pipeline can be executed for testing purposes using the mockup da
 
 ##### Mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv```
 Belgium mockup data compliant with the common data model defined in the use case is provided to showcase the analytical pipeline. The data are fictitious without any realistic correlations. It contains 200k individuals with random empty values.
+
+##### Mockup final report ```EHDS2_pilot_UC_3_final_report_mockup_data.html```
+A final report based on the mockup data is available for download to show as example.
