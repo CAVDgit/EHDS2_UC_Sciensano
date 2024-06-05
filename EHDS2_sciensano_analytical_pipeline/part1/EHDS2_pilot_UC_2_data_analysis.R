@@ -6,7 +6,7 @@ library(tidyverse)
 library(DT)
 
 ###################### INSTRUCTIONS #######################
-# Modify the sections 1. to 4. then execute the script.
+# Modify the sections 1. to 3. then execute the script.
 
 # 1. Place in a same folder, this script and your individual data
 # And set the working directory to the location of this script.
@@ -38,7 +38,11 @@ country <- 'BE'
 
 threshold <- 10
 
-# 4. ######################################################
+
+
+# Do not modify any lines after this point. !!!
+
+###########################################################
 #######################  Cohort limit #####################
 ###########################################################
 
@@ -46,10 +50,6 @@ date_from <- as.Date('2021-01-01')
 date_to <- as.Date('2022-12-31')
 age_max <- 115
 age_min <- 18
-
-# Do not modify any lines after this point. !!!
-
-
 
 
 ###########################################################
