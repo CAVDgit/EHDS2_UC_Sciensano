@@ -150,7 +150,7 @@ df_tests <- df_clean %>%
          range1 = test_nm ) %>% 
   select(-test_nm) %>%
   mutate(n = ifelse(n < threshold, -1, n),
-         ratio = ifelse(n < threshold, -1, ratio))
+         ratio = ifelse(n < threshold, NA, ratio))
 
 # range1 == positive tests
 df_pos_tests <- df_clean %>% 
@@ -160,7 +160,7 @@ df_pos_tests <- df_clean %>%
          range1 = test_positive_to_covid_nm) %>% 
   select(-test_positive_to_covid_nm) %>%
   mutate(n = ifelse(n < threshold, -1, n),
-         ratio = ifelse(n < threshold, -1, ratio))
+         ratio = ifelse(n < threshold, NA, ratio))
 
 rq <- bind_rows(rq, df_tests)
 rq <- bind_rows(rq, df_pos_tests)
@@ -373,7 +373,7 @@ df_doses <- df_clean %>%
          range1 = doses_nm) %>% 
   select(-doses_nm) %>%
   mutate(n = ifelse(n < threshold, -1, n),
-         ratio = ifelse(n < threshold, -1, ratio))
+         ratio = ifelse(n < threshold, NA, ratio))
 
 rq <- bind_rows(rq, df_doses)
 
