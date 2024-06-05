@@ -68,8 +68,8 @@ Files in **part2** folder :
 ##### Node report script ```EHDS2_pilot_UC_3_final_report.qmd```
 Report script that will generate an interactive HTML document addressing the research questions.
 
-##### Shape dimensions file ```EHDS2_pilot_UC1_nuts_code.shp```
-Dependency necessary for the node report script.
+##### Shape dimensions files ```EHDS2_pilot_UC1_nuts_code.shp```, ```EHDS2_pilot_UC1_nuts_code.dbf```, ```EHDS2_pilot_UC1_nuts_code.prj```, ```EHDS2_pilot_UC1_nuts_code.shx```
+Dependencies necessary for the node report script.
 
 
 #### Instructions
@@ -90,7 +90,7 @@ Part1:
      - Execute the script to generate the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```) that can be exported outside the secure processing environment.
 
 Part2:
-  1. Place in the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape file ```EHDS2_pilot_UC1_nuts_code.shp```.
+  1. Place in the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape files ```EHDS2_pilot_UC1_nuts_code.shp```, ```EHDS2_pilot_UC1_nuts_code.dbf```, ```EHDS2_pilot_UC1_nuts_code.prj```, ```EHDS2_pilot_UC1_nuts_code.shx```.
   2. Open the script using RStudio and set the working directory to the actual location of the script.
   3. Execute the script to generate the final HTML report.
 
