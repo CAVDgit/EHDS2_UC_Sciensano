@@ -54,10 +54,10 @@ For the purpose of the use case, the pipeline is composed of several scripts:
 2. **Data analysis script** (R) -> output : csv file containing only aggregate data
 3. **Node report script** (Quarto R) -> output : html document
 4. **Shape file** (shp) -> used by the Node report script to generate the choropethe maps.
-5. **Mockup data file** (csv) -> Mockup data given as example for the use case.
+5. **Mockup data file** (csv) -> Mockup data given as an example for the use case
 
-Files in **part1** folder :
-These scripts should be excutated on the individual data into the secure processing environnement.
+Files in part1 folder: These scripts should be executed on the individual data in the secure processing environment.
+
 ##### Data Quality script ```EHDS2_pilot_UC_1_data_quality.qmd```
 Evaluation of the compliance of individual data with the common data model. Based on the quality script designed by [BY-COVID](https://github.com/MarjanMeurisse/BY-COVID_WP5_T5.2_baseline-use-case).
 
