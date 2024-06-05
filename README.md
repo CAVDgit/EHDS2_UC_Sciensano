@@ -94,7 +94,7 @@ Part1:
 Part2:
   1. Place into the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape file ```EHDS2_pilot_UC1_nuts_code.shp```.
   2. Open the script using RStudio and set the working directory to the actual location of the script.
-  3. Execute the script to generate the HTML final report report.
+  3. Execute the script to generate the final HTML report.
 
 The analytical can be executated for testing purpose using the mockup data ```EHDS2_pilot_UC1_mockup_data_BE.csv``` provided on this github.
 
