@@ -1,0 +1,681 @@
+---
+title: "HealthData@EU Pilot - Sciensano Use Case : Population uptake metrics: COVID-19 test positivity, vaccination and hospitalization"
+subtitle: "Quality Analysis"
+format: 
+  html:
+    page-layout: full
+    self-contained: true
+editor: source
+always_allow_html: yes
+title-block-banner: "#27445C"
+---
+
+```{r}
+#| include: false
+
+library(tidyverse)
+library(formattable)
+library(validate)
+library(plotly)
+library(DataExplorer)
+library(DT)
+
+```
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+###################################################
+########## Enter the file name to analyse #########
+###################################################
+
+file_path <- "EHDS2_pilot_UC1_mockup_data_BE.csv"
+
+
+#### Then Execute the script #####
+
+# variables
+now_date  <- as.Date("2021-01-01")
+date_from <- as.Date('2021-01-01')  
+date_to <- as.Date('2022-12-31')
+age_max <- 115
+age_min <- 18
+
+data_types <- c(
+  person_id = "character",
+  sex_cd = "character",
+  age_nm = "integer",
+  age_cd = "character",
+  exitus_dt = "Date",
+  exitus_bl = "logical",
+  country_origin_cd = "character",
+  country_cd = "character",
+  residence_area_nuts2_cd = "character",
+  residence_area_cd = "character",
+  residence_area_lau_cd = "character",
+  education_level_cd = "character",
+  income_category_cd = "character",
+  migration_background_cd = "character",
+  household_type_cd = "character",
+  hospi_due_to_covid_bl = "logical",
+  test_positive_to_covid_nm = "integer",
+  test_nm = "integer",
+  dose_1_brand_cd = "character",
+  dose_1_dt = "Date",
+  dose_2_brand_cd = "character",
+  dose_2_dt = "Date",
+  dose_3_brand_cd = "character",
+  dose_3_dt = "Date",
+  doses_nm = "integer",
+  fully_vaccinated_dt = "Date",
+  fully_vaccinated_bl = "logical"
+)
+
+df <- read.csv(file_path, colClasses = data_types, header = TRUE)
+
+dt_ind <- as.data.frame(introduce(df))
+
+
+
+```
+
+
+## Overview
+
+This section provides an overview of the imported dataset. Dataset statistics, variable types, a missing data profile and potential alerts are shown below.
+
+::: panel-tabset
+### Dataset statistics
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+tryCatch(
+  {
+    dt_stat <- dt_ind
+    dt_stat$perc_missing_values <- 
+      paste0(round(100*dt_stat$total_missing_values/dt_stat$total_observations,1),"%")
+    dt_stat$memory_usage <- utils:::format.object_size(dt_stat$memory_usage,"auto")
+    dt_stat$rows <- formatC(dt_stat$rows, format="f", big.mark = " ", digits = 0)
+    dt_stat$total_observations <- formatC(dt_stat$total_observations, format="f", big.mark = " ", digits = 0)
+    dt_stat$total_missing_values <- formatC(dt_stat$total_missing_values, format="f", big.mark = " ", digits = 0)
+    dt_stat <- t(dt_stat[,c("columns", "rows", "total_observations", "total_missing_values","perc_missing_values","memory_usage")])
+    DT::datatable(dt_stat,
+                  class = 'cell-border stripe',
+                  colnames = "",
+                  options = list(dom = 't'),
+                  caption = htmltools::tags$caption(
+                    style = "text-align: left",
+                    ''),
+                  rownames = c("Number of variables","Number of rows", "Total observation","Total missing cells", "Missing cells (%)", "Memory usage")) 
+  },
+  error=function(cond) {
+    ## Log info
+    warning(paste0("MY ERROR:\n", cond))
+    return(stop(cond))
+  })
+
+```
+
+
+### Variables
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create table with basic column information (discrete, continuous, all missing columns)
+
+tryCatch(
+  {
+    dt_var <- dt_ind
+    dt_var <- t(dt_var[,c("discrete_columns","continuous_columns","all_missing_columns")])
+    rownames(dt_var) <- c("Discrete variable","Continuous variable","All missing variable")
+    formattable(as.data.frame(dt_var), align = c("l","c"), col.names = NULL)
+  },
+  error=function(cond) {
+    ## Log info
+    warning(paste0("MY ERROR:\n", cond))
+    return(stop(cond))
+  })
+
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create table with information on the variable classes
+
+tryCatch(
+  {
+    dt_var_class <- as.data.frame(sapply(df, class))
+    DT::datatable(dt_var_class,
+                  class = 'cell-border stripe',
+                  caption = htmltools::tags$caption(
+                    style = "text-align: left",''),
+                  colnames = c("Variable","Class"))
+  },
+  error=function(cond) {
+    ## Log info
+    warning(paste0("MY ERROR:\n", cond))
+    return(stop(cond))
+  })
+
+```
+
+### Missing data profile
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create table with missing data profile (feature/variable, nr missing, % missing)
+
+tryCatch(
+  {
+    dt_prof <- profile_missing(df)
+    DT::datatable(dt_prof,
+                  class = 'cell-border stripe',
+                  caption = htmltools::tags$caption(
+                    style = "text-align: left", NULL),
+                  rownames = NULL,
+                  colnames=c("Feature","Number missing","Percentage missing")) %>%
+      formatPercentage("pct_missing", digits=1) %>%
+      formatStyle(
+        'pct_missing',
+        background = styleColorBar(dt_prof$pct_missing, 'steelblue'),
+        backgroundSize = '100% 90%',
+        backgroundRepeat = 'no-repeat',
+        backgroundPosition = 'center'
+      )
+  },
+  error=function(cond) {
+    ## Log info
+    warning(paste0("MY ERROR:\n", cond))
+    return(stop(cond))
+  })
+
+```
+
+<br>
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+# Description: create plot with missing data profile
+
+tryCatch(
+  {
+    plot_missing(df)
+  },
+  error=function(cond) {
+    ## Log info
+    warning(paste0("MY ERROR:\n", cond))
+    return(stop(cond))
+  })
+
+
+```
+
+<!-- ```{r} -->
+<!-- #| echo: false -->
+<!-- #| warning: false -->
+<!-- #| error: false -->
+
+<!-- tryCatch( -->
+<!--   { -->
+<!--     pl -->
+<!--   }, -->
+<!--   error=function(cond) { -->
+<!--     ## Log info -->
+<!--     warning(paste0("MY ERROR:\n", cond)) -->
+<!--     return(stop(cond)) -->
+<!--   }) -->
+
+<!-- ``` -->
+
+### Alerts
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create table with alerts when:
+# - A variable has a constant value ('Constant')
+# - A variable has more than 50% missing values ('Missing')
+# - A variable has all unique values ('Unique')
+
+tryCatch(
+  {
+    dt_alert <- data.frame(matrix(NA, nrow = 0, ncol = 2))
+    
+    # Constant values
+    for(i in colnames(df)) {
+      if((length(unique(df[,i]))==1 && !is.na(unique(df[,i])))) {
+        dt_alert <- rbind(dt_alert,c(paste0(i," has constant value ",unique(df[,i])),"Constant"))
+      }
+    }
+    
+    # Missing values
+    for(k in colnames(df)) {
+      n_miss <- length(df[which(is.na(df[,k])),k])
+      perc_miss <- n_miss/nrow(df)
+      if(perc_miss>0.5) {
+        dt_alert <- rbind(dt_alert,c(paste0(k," has ", n_miss, " (", round(100*perc_miss,1), "%) missing values"),"Missing"))
+      }
+    }
+    
+    # Unique values
+    for(h in colnames(df)) {
+      n_unique <- length(unique(df[,h]))
+      if(n_unique==nrow(df)) {
+        dt_alert <- rbind(dt_alert,c(paste0(h," has all unique values"),"Unique"))
+      }
+    }
+    
+    colnames(dt_alert) <- c('V1','V2')
+    formattable(dt_alert,
+                align = c("l","c"),
+                col.names = NULL,
+                list(
+                    V2 = formatter("V1",
+                            style = ~formattable::style(
+                              display = "block", 
+                              padding = "0 4px", 
+                              `border-radius` = "4px", 
+                              `background-color` = 
+                                  case_when(V2 == "Constant" ~ "#F4A460",
+                                            V2 == "Missing" ~ "lightblue",
+                                            V2 == "Unique" ~ "#66CDAA")))
+                ))
+  })
+
+```
+
+### Duplicates
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create table with information of patients that appear more than once in the data
+
+tryCatch(
+  {
+    dt_duplicates <- data.frame(matrix(NA, nrow = 0, ncol = 3))
+    
+    if(sum(duplicated(df$person_id))==0) {
+      dt_duplicates <- rbind(dt_duplicates,c("The variable 'person_id' has all unique values",paste0("Number of duplicate values: ", sum(duplicated(df$person_id))),"Unique"))
+    } else {
+      dt_duplicates <- rbind(dt_duplicates,c("The variable 'person_id' does not have all unique values",paste0("Number of duplicate values: ", sum(duplicated(df$person_id))),"Not unique"))
+    }
+    
+    colnames(dt_duplicates) <- c('V1','V2','V3')
+    formattable(dt_duplicates,
+                align = c("l","c"),
+                col.names = NULL,
+                list(
+                    V3 = formatter("V3",
+                            style = ~formattable::style(
+                              display = "block", 
+                              padding = "0 4px", 
+                              `border-radius` = "4px", 
+                              `background-color` = 
+                                  case_when(V3 == "Unique" ~ "#66CDAA",
+                                            V3 == "Not Unique" ~ "#FF4747")))
+                ))
+  })
+
+```
+:::
+
+
+## Variables
+
+This section provides more detailed information per variable in the imported dataset.
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+#| eval : false
+  
+htmltools::tagList(datatable(df))
+
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+#| output: asis
+
+# categorical_integer_variables <- ""
+
+## Description:
+# -> iterate over variables
+#    -> for every variable different statistics are shown in different panels:
+#        - panel 1: Overview
+#        - panel 2: Summary
+#        - panel 3: Categories
+#        - panel 4: Distribution
+
+tryCatch(
+  {
+    cat('::: panel-tabset\n\n')
+    purrr::iwalk(colnames(df), ~ {
+
+      
+      ## within the box print the variable name
+      cat('#### ', ., ' {style="color: #7F7F7F"} \n\n')
+
+      ## within the box print the variable class
+      cat('##### Class of the variable: ', class(df[,.]), ' {style="color: #7F7F7F; font-size: 10pt"} \n')
+
+      ## within the box create a tabset panel
+      cat('::: panel-tabset\n\n')
+
+      ## panel 1 (Overview: nr and % distinct values, nr and % missing values)
+      cat('#### Overview \n')
+
+      df_sub <- data.frame(matrix(NA, nrow = 4, ncol = 2))
+      df_sub[,1] <- c("Distinct","Distinct (%)","Missing","Missing (%)")
+      df_sub[1,2] <- length(unique(df[,.]))
+      df_sub[2,2] <- round(100*length(unique(df[,.]))/nrow(df),3)
+      df_sub[3,2] <- sum(is.na(df[,.]))
+      df_sub[4,2] <- round(100*sum(is.na(df[,.]))/nrow(df),3)
+      print(htmltools::tagList(DT::datatable(df_sub,
+                                             rownames = NULL,
+                                             class = 'cell-border stripe',
+                                             colnames = NULL,
+                                             options = list(dom = 't'),
+                                             caption = htmltools::tags$caption(
+                                                style = "text-align: left")
+                                             )))
+      
+      ## panel 2 (Summary: summary information of the variable)
+      cat('#### Summary \n')
+      
+      if(class(df[,.])!="Date" & .!="doses_nm") {
+        c_sum <- as.data.frame(unclass(summary(df[,.])))
+        colnames(c_sum) <- c(.)
+        print(htmltools::tagList(DT::datatable(c_sum,
+                                               options = list(dom = 't'),
+                                               caption = htmltools::tags$caption(
+                                                  style = "text-align: left"))))
+      } else if(.=="doses_nm") {
+        c_sum <- as.data.frame(unclass(summary(as.factor(df[,.]))))
+        colnames(c_sum) <- c(.)
+        c_sum_tmp <- data.frame(class(df[,.]))
+        colnames(c_sum_tmp) <- c(.)
+        rownames(c_sum_tmp) <- c("Class")
+        c_sum <- rbind(c_sum_tmp, c_sum)
+        print(htmltools::tagList(DT::datatable(c_sum,
+                                               options = list(dom = 't'),
+                                               caption = htmltools::tags$caption(
+                                                  style = "text-align: left"))))
+      } else {
+        c_sum <- data.frame(`Date_range`= paste0(min(df[,.],na.rm=TRUE)," - ", max(df[,.],na.rm=TRUE)))
+        rownames(c_sum) <- c(.)
+        print(htmltools::tagList(DT::datatable(c_sum,
+                                               options = list(dom = 't'),
+                                               caption = htmltools::tags$caption(
+                                                  style = "text-align: left"),
+                                               colnames = c("Date range")
+                                               )))
+      }
+
+      ## panel 3 (Categories: count and frequency of every distinct value of the variable (if less than 100 distinct values))
+      cat('#### Categories \n')
+
+      if(length(unique(df[,.]))<100) {
+        df_values <- as.data.frame(table(df[,.],useNA = 'always'))
+        df_values$Freq_perc <- round(100*df_values$Freq/nrow(df),3)
+        df_values$Freq_perc <- df_values$Freq/nrow(df)
+        print(htmltools::tagList(DT::datatable(df_values,
+                                               rownames = NULL,
+                                               class = 'cell-border stripe',
+                                               colnames = c("Value","Count","Frequency (%)"),
+                                               caption = htmltools::tags$caption(
+                                                  style = "text-align: left")
+                                               ) %>%
+                                              formatPercentage("Freq_perc",
+                                                           digits=1) %>%
+                                              formatStyle(
+                                                'Freq_perc',
+                                                background = styleColorBar(c(0,1), 'steelblue'),
+                                                backgroundSize = '98% 88%%',
+                                                backgroundRepeat = 'no-repeat',
+                                                backgroundPosition = 'center'
+                                              )))
+      } else {
+        cat('More than 100 distinct values \n\n')
+      }
+
+      cat('\n')
+
+      ## panel 4 (Distribution: distribution of the variable)
+      cat('#### Distribution \n\n')
+
+      if((class(df[,.])=="character") && (length(unique(df[,.]))>=100)) {
+
+        cat('More than 100 distinct values \n\n')
+
+      } else if(class(df[,.])=="character" || class(df[,.])=="logical") {
+
+        pl_dist <- ggplot(df, aes_string(x = .)) +
+          geom_bar(fill="steelblue") +
+          theme_minimal() +
+          theme(axis.title.y=element_blank())
+        print(htmltools::tagList(ggplotly(pl_dist)))
+
+      } else if(class(df[,.])=="integer" || class(df[,.])=="Date") {
+
+        pl_dist <- ggplot(df, aes_string(x = .)) +
+                  geom_histogram(fill="steelblue", color="black") +
+                  theme_minimal() +
+                  theme(axis.title.y=element_blank())
+        print(htmltools::tagList(ggplotly(pl_dist)))
+      }
+
+      cat('::: \n\n')
+
+    })
+    cat('::: \n\n')
+  })
+
+```
+
+
+## Compliance with the Common Data Model specification {.tabset}
+
+We check whether the imported dataset complies with the data model specification (<https://docs.google.com/spreadsheets/d/1Eva2ucg_M0WaDkCaF7qfBxk2DwTlUac9gKuP3xck4rw/edit#gid=0>).
+
+To comply with the data model, the dataset must pass a number of validation rules. The data are tested against this set of validation rules and results from this validation process are summarized.
+
+::: panel-tabset
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: specification of validation rules and confrontation of the data with these validation rules
+
+validation <- function(data) {
+  
+  ## specify validation rules
+  rules <- validator(
+    is.na(sex_cd) | sex_cd %in% c("0","1","2","9"),
+    is.na(age_nm) | age_nm >= 18 & age_nm <=115,
+    is.na(age_cd) | age_cd %in% c("0-18", "18-25", "25-35", "35-45", "45-55", "55-65", "65-75", "75-85", "85-95", "95-105", "105-115"),
+    is.na(exitus_bl) | exitus_bl %in% c(TRUE, FALSE),
+    is.na(education_level_cd) | education_level_cd %in% c("Low","Middle","High"),
+    is.na(income_category_cd) | income_category_cd %in% c("Low","Middle","High"),
+    is.na(migration_background_cd) | migration_background_cd %in% c("NATIVE","EU","NON-EU","PAR"),
+    is.na(household_type_cd) | household_type_cd %in% c("ALONE","COUPLE","COUPLE_CHILD","LONE","EXTENDED", "OTHER"),
+    is.na(hospi_due_to_covid_bl) | hospi_due_to_covid_bl %in% c(TRUE, FALSE),
+    is.na(test_positive_to_covid_nm) | test_positive_to_covid_nm >= 0 & test_positive_to_covid_nm <= 50,
+    is.na(test_nm) | test_nm >= 0 & test_nm <= 50,
+    is.na(dose_1_brand_cd) | dose_1_brand_cd %in% c("BP","MD","JJ","AZ","NV"),
+    is.na(dose_2_brand_cd) | dose_2_brand_cd %in% c("BP","MD","JJ","AZ","NV"),
+    is.na(dose_3_brand_cd) | dose_3_brand_cd %in% c("BP","MD","JJ","AZ","NV"),
+    is.na(doses_nm) | doses_nm >= 0 & doses_nm <= 10,
+    (is.na(dose_1_dt) & is.na(dose_2_dt)) | is.na(dose_2_dt) |
+      !is.na(dose_1_dt) & !is.na(dose_2_dt) & 
+      (dose_1_dt < dose_2_dt),
+    (is.na(dose_2_dt) & is.na(dose_3_dt)) | is.na(dose_3_dt) |
+      !is.na(dose_2_dt) & !is.na(dose_3_dt) & 
+      (dose_2_dt < dose_3_dt),
+    is.na(fully_vaccinated_dt) | is.na(exitus_dt) |
+      !is.na(fully_vaccinated_dt) & !is.na(exitus_dt) & 
+      fully_vaccinated_dt <= exitus_dt,
+    (!is.na(dose_1_dt) & !is.na(dose_2_dt) & !is.na(dose_3_dt) & doses_nm>=3) | 
+        (!is.na(dose_1_dt) & !is.na(dose_2_dt) & is.na(dose_3_dt) & doses_nm==2) |
+        (!is.na(dose_1_dt) & is.na(dose_2_dt) & is.na(dose_3_dt) & doses_nm==1) | 
+        (is.na(dose_1_dt) & is.na(dose_2_dt) & is.na(dose_3_dt) & doses_nm==0),
+    is.na(dose_1_dt) | (!is.na(dose_1_dt) & !is.na(dose_1_brand_cd)),
+    is.na(dose_2_dt) | (!is.na(dose_2_dt) & !is.na(dose_2_brand_cd) &
+                        !is.na(dose_1_dt) & !is.na(dose_1_brand_cd)),
+    is.na(dose_3_dt) | (!is.na(dose_3_dt) & !is.na(dose_3_brand_cd) &
+                        !is.na(dose_2_dt) & !is.na(dose_2_brand_cd) &
+                        !is.na(dose_1_dt) & !is.na(dose_1_brand_cd)),
+    (dose_1_brand_cd=="JJ" & !is.na(dose_1_dt) & !is.na(dose_2_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
+      (dose_1_brand_cd!="JJ" & !is.na(dose_2_dt) & !is.na(dose_3_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
+      (is.na(dose_1_brand_cd) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE) |
+      (dose_1_brand_cd!="JJ" & is.na(dose_2_dt) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE)
+  )
+  
+  ## confront the data with the validation rules
+  out <- confront(data,rules)
+  return(out)
+}
+
+tryCatch(
+  {
+    out <- validation(df)
+    summary_validation_tmp <- summary(out)
+  })
+
+```
+
+##### Validation table
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create a table with a summary of the validation results
+
+tryCatch(
+  {
+    summary_validation <- summary_validation_tmp
+    summary_validation$perc_fails <- paste0(round(100*summary_validation$fails/summary_validation$items,2),'%')
+    summary_validation$perc_missing <- paste0(round(100*summary_validation$nNA/summary_validation$items,2),'%')
+    summary_validation$perc_missing_num <- 100*summary_validation$nNA/summary_validation$items
+    summary_validation <- summary_validation[,c("expression","name", "items","passes","fails","perc_fails","nNA","perc_missing", "error","warning","perc_missing_num")]
+    colnames(summary_validation) <- c("Validation rule","Name rule","Items","Passes","Fails","Percentage of fails","Number of NAs","Percentage of NAs","Error","Warning","perc_missing_num")
+    formattable(summary_validation,
+                align = c("l","c","c","c","c","c","c","c","c","c","c"),
+                list(
+                  perc_missing_num = FALSE,
+                  Error = formatter("Error",
+                    style = ~formattable::style(display = "block", 
+                                    padding = "0 4px", 
+                                    `border-radius` = "4px", 
+                                    `background-color` = case_when(Error==TRUE ~"#F4A460"))),
+                  Warning = formatter("Warning",
+                    style = ~formattable::style(display = "block", 
+                                    padding = "0 4px", 
+                                    `border-radius` = "4px", 
+                                    `background-color` = case_when(Warning==TRUE ~"#F4A460"))),
+                  `Percentage of NAs` = formatter("Percentage of NAs",
+                    style = ~formattable::style(display = "block", 
+                                    padding = "0 4px", 
+                                    `border-radius` = "4px", 
+                                    `background-color` = 
+                                    case_when(perc_missing_num > 2.5 ~ "#F4A460"))),
+                  Fails = formatter("Fails",
+                    style = ~formattable::style(display = "block", 
+                                    padding = "0 4px", 
+                                    `border-radius` = "4px", 
+                                    `background-color` = case_when(Fails > 0 ~ "#F4A460")))
+    ))
+  })
+
+```
+
+##### Validation plot
+
+The vertical bars in the validation plot indicate the percentage of records 'Passing', 'Failing' and 'Missing'
+
+```{r}
+#| echo: false
+#| warning: false
+#| error: false
+
+## Description: create interactive validation plot
+
+tryCatch(
+  {
+
+    pl <- summary_validation %>%
+      mutate(perc_fails=Fails/Items) %>%
+      mutate(perc_passes=Passes/Items) %>%
+      mutate(perc_missing=`Number of NAs`/Items) %>%
+      select(c(`Name rule`,`Validation rule`,perc_fails, perc_passes, perc_missing)) %>%
+      gather(name, value, perc_fails:perc_missing) %>%
+      mutate(name=case_when(
+        name=="perc_fails" ~ "Fails",
+        name=="perc_passes" ~ "Passes",
+        name=="perc_missing" ~ "Missing"
+      )) %>%
+      mutate(name=factor(name,levels=c("Fails","Passes","Missing")))
+    
+    
+    pl$`name` <- factor(pl$`name`, levels = c("Fails", "Missing", "Passes"))
+    
+    ply <- plot_ly(data = pl, 
+                   x = ~`Name rule`, 
+                   y = ~value, type = "bar", 
+                   color = ~name,
+                   colors = c("red", "grey", "#4C9900"), 
+                   text = ~`Validation rule`) %>%
+      layout(title = "Validation Plot",
+             xaxis = list(title = "Validation rules"),
+             yaxis = list(title = "Value", tickformat = ".1%"),
+             barmode = "stack")
+    
+    ply
+    
+  })
+
+```
+
+<!-- ```{r} -->
+<!-- #| echo: false -->
+<!-- #| warning: false -->
+<!-- #| error: false -->
+
+<!-- tryCatch( -->
+<!--   { -->
+<!--     ply -->
+<!--   }) -->
+
+<!-- ``` -->
+:::
+
+
+
