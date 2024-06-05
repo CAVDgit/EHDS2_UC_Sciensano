@@ -101,4 +101,4 @@ The analytical pipeline can be executed for testing purposes using the mockup da
 Belgium mockup data compliant with the common data model defined in the use case is provided to showcase the analytical pipeline. The data are fictitious without any realistic correlations. It contains 200k individuals with random empty values.
 
 ##### Mockup final report ```EHDS2_pilot_UC_3_final_report_mockup_data.html```
-A final report based on the mockup data is available for download to show as example.
+A final report based on the mockup data is available for download as example.
