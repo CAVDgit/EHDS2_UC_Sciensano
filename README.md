@@ -64,7 +64,7 @@ Evaluation of the compliance of individual data with the common data model. Base
 ##### Data analysis script ```EHDS2_pilot_UC_2_data_analysis.R```
 Analysis script that will generate the aggregate output for a node.
 
-File in **part2** folder :
+Files in **part2** folder :
 ##### Node report script ```EHDS2_pilot_UC_3_final_report.qmd```
 Report script that will generate an interactive HTML document addressing the research questions.
 
