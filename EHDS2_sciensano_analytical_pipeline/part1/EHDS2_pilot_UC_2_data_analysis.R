@@ -1,7 +1,7 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.1" 
-# date of version : 05-06-24
+# script_version <- "1.2" 
+# date of version : 12-06-24
 
 library(tidyverse)
 library(DT)
@@ -9,7 +9,15 @@ library(DT)
 ###################### INSTRUCTIONS #######################
 # Modify the sections 1. to 3. then execute the script.
 
-# 1. Place in a same folder, this script and your individual data
+# 1. ######################################################
+########## Enter the country CODE of your node ############
+###########################################################
+###########################################################
+
+# Accepted value : BE, FR, FI, HU, HR, DK
+country <- 'BE'
+
+# 2. Place in a same folder, this script and your individual data
 # And set the working directory to the location of this script.
 
 # ## ######################################################
@@ -18,14 +26,6 @@ library(DT)
 # specify the file name of your individual data
 
 file_path <- sprintf("EHDS2_pilot_UC1_mockup_data_%s.csv", country)
-
-# 2. ######################################################
-########## Enter the country CODE of your node ############
-###########################################################
-###########################################################
-
-# Accepted value : BE, FR, FI, HU, HR, DK
-country <- 'BE'
 
 # 3. ######################################################
 #################### Cut-off / Threshold ##################
@@ -38,8 +38,6 @@ country <- 'BE'
 # Excluded groups will be represented in the output with n = -1 and associated data will not be captured
 
 threshold <- 10
-
-
 
 # Do not modify any lines after this point. !!!
 
@@ -96,7 +94,6 @@ df$sex_cd <- ifelse(df$sex_cd == 1, 'M',
 
 # remove NA from essential variable
 df_clean <- df %>% filter(!is.na(person_id),
-                          !is.na(sex_cd),
                           !is.na(country_cd),
                           age_nm >= age_min & age_nm <age_max,
                           exitus_bl == F)
@@ -150,8 +147,8 @@ df_tests <- df_clean %>%
          RQ = "rq1_distribution", 
          range1 = test_nm ) %>% 
   select(-test_nm) %>%
-  mutate(n = ifelse(n < threshold, -1, n),
-         ratio = ifelse(n < threshold, NA, ratio))
+  mutate(n = ifelse(n > 0 & n < threshold, -1, n),
+         ratio = ifelse(n > 0 & n < threshold, NA, ratio))
 
 # range1 == positive tests
 df_pos_tests <- df_clean %>% 
@@ -160,8 +157,8 @@ df_pos_tests <- df_clean %>%
          RQ = "rq2_distribution", 
          range1 = test_positive_to_covid_nm) %>% 
   select(-test_positive_to_covid_nm) %>%
-  mutate(n = ifelse(n < threshold, -1, n),
-         ratio = ifelse(n < threshold, NA, ratio))
+  mutate(n = ifelse(n > 0 & n < threshold, -1, n),
+         ratio = ifelse(n > 0 & n < threshold, NA, ratio))
 
 rq <- bind_rows(rq, df_tests)
 rq <- bind_rows(rq, df_pos_tests)
@@ -186,14 +183,14 @@ rq1_summary <- df_clean %>%
             n = n()) %>%
   mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
          upperfence = q3 + 1.5 * (q3 - q1),
-         n = ifelse(n < threshold, -1, n),
-         q1 = ifelse(n < threshold, NA, q1),
-         median = ifelse(n < threshold, NA, median),
-         mean = ifelse(n < threshold, NA, mean),
-         q3 = ifelse(n < threshold, NA, q3),
-         sd = ifelse(n < threshold, NA, sd),
-         lowerfence = ifelse(n < threshold, NA, lowerfence),
-         upperfence = ifelse(n < threshold, NA, upperfence),
+         n = ifelse(n > 0 & n < threshold, -1, n),
+         q1 = ifelse(n > 0 & n < threshold, NA, q1),
+         median = ifelse(n > 0 & n < threshold, NA, median),
+         mean = ifelse(n > 0 & n < threshold, NA, mean),
+         q3 = ifelse(n > 0 & n < threshold, NA, q3),
+         sd = ifelse(n > 0 & n < threshold, NA, sd),
+         lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
+         upperfence = ifelse(n > 0 & n < threshold, NA, upperfence),
          RQ = "rq1_summary")
 
 rq <- bind_rows(rq, rq1_summary)
@@ -212,14 +209,14 @@ for (col in columns_to_aggregate) {
               n = n()) %>%
     mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
            upperfence = q3 + 1.5 * (q3 - q1),
-           n = ifelse(n < threshold, -1, n),
-           q1 = ifelse(n < threshold, NA, q1),
-           median = ifelse(n < threshold, NA, median),
-           mean = ifelse(n < threshold, NA, mean),
-           q3 = ifelse(n < threshold, NA, q3),
-           sd = ifelse(n < threshold, NA, sd),
-           lowerfence = ifelse(n < threshold, NA, lowerfence),
-           upperfence = ifelse(n < threshold, NA, upperfence))
+           n = ifelse(n > 0 & n < threshold, -1, n),
+           q1 = ifelse(n > 0 & n < threshold, NA, q1),
+           median = ifelse(n > 0 & n < threshold, NA, median),
+           mean = ifelse(n > 0 & n < threshold, NA, mean),
+           q3 = ifelse(n > 0 & n < threshold, NA, q3),
+           sd = ifelse(n > 0 & n < threshold, NA, sd),
+           lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
+           upperfence = ifelse(n > 0 & n < threshold, NA, upperfence))
 
   stats_df$RQ <- paste0("rq1_", col)
   
@@ -240,10 +237,10 @@ for (col in columns_to_aggregate) {
               range2 = sum(range2),
               range3 = sum(range3),
               n = n()) %>%
-    mutate(n = ifelse(n < threshold, -1, n),
-           range1 = ifelse(range1 < threshold, -1, range1),
-           range2 = ifelse(range2 < threshold, -1, range2),
-           range3 = ifelse(range3 < threshold, -1, range3))
+    mutate(n = ifelse(n > 0 & n < threshold, -1, n),
+           range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
+           range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
+           range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
   stats_df$RQ <- paste0("rq1_", col, "_test")
 
   rq <- bind_rows(rq, stats_df)
@@ -270,14 +267,14 @@ rq2_summary <- df_clean %>%
             n = n()) %>% 
   mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
          upperfence = q3 + 1.5 * (q3 - q1),
-         n = ifelse(n < threshold, -1, n),
-         q1 = ifelse(n < threshold, NA, q1),
-         median = ifelse(n < threshold, NA, median),
-         mean = ifelse(n < threshold, NA, mean),
-         q3 = ifelse(n < threshold, NA, q3),
-         sd = ifelse(n < threshold, NA, sd),
-         lowerfence = ifelse(n < threshold, NA, lowerfence),
-         upperfence = ifelse(n < threshold, NA, upperfence),
+         n = ifelse(n > 0 & n < threshold, -1, n),
+         q1 = ifelse(n > 0 & n < threshold, NA, q1),
+         median = ifelse(n > 0 & n < threshold, NA, median),
+         mean = ifelse(n > 0 & n < threshold, NA, mean),
+         q3 = ifelse(n > 0 & n < threshold, NA, q3),
+         sd = ifelse(n > 0 & n < threshold, NA, sd),
+         lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
+         upperfence = ifelse(n > 0 & n < threshold, NA, upperfence),
          RQ = "rq2_summary")
 
 rq <- bind_rows(rq, rq2_summary)
@@ -297,14 +294,14 @@ for (col in columns_to_aggregate) {
               n = n()) %>%
     mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
            upperfence = q3 + 1.5 * (q3 - q1),
-           n = ifelse(n < threshold, -1, n),
-           q1 = ifelse(n < threshold, NA, q1),
-           median = ifelse(n < threshold, NA, median),
-           mean = ifelse(n < threshold, NA, mean),
-           q3 = ifelse(n < threshold, NA, q3),
-           sd = ifelse(n < threshold, NA, sd),
-           lowerfence = ifelse(n < threshold, NA, lowerfence),
-           upperfence = ifelse(n < threshold, NA, upperfence))
+           n = ifelse(n > 0 & n < threshold, -1, n),
+           q1 = ifelse(n > 0 & n < threshold, NA, q1),
+           median = ifelse(n > 0 & n < threshold, NA, median),
+           mean = ifelse(n > 0 & n < threshold, NA, mean),
+           q3 = ifelse(n > 0 & n < threshold, NA, q3),
+           sd = ifelse(n > 0 & n < threshold, NA, sd),
+           lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
+           upperfence = ifelse(n > 0 & n < threshold, NA, upperfence))
   
   stats_df$RQ <- paste0("rq2_", col)
   
@@ -323,10 +320,10 @@ for (col in columns_to_aggregate) {
               range2 = sum(range2),
               range3 = sum(range3),
               n = n()) %>%
-    mutate(n = ifelse(n < threshold, -1, n),
-           range1 = ifelse(range1 < threshold, -1, range1),
-           range2 = ifelse(range2 < threshold, -1, range2),
-           range3 = ifelse(range3 < threshold, -1, range3))
+    mutate(n = ifelse(n > 0 & n < threshold, -1, n),
+           range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
+           range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
+           range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
   stats_df$RQ <- paste0("rq2_", col, "_positive_test")
   
   rq <- bind_rows(rq, stats_df)
@@ -341,7 +338,7 @@ rq3_4_general <- df_clean %>%
            fully_vaccinated_bl) %>% 
   summarise(n = n()) %>%
   mutate(RQ = "rq3_4_general",
-         n = ifelse(n < threshold, -1, n))
+         n = ifelse(n > 0 & n < threshold, -1, n))
 
 rq <- bind_rows(rq, rq3_4_general)
 
@@ -359,8 +356,8 @@ rq3_summary <- df_clean %>%
   summarise(range1 = sum(fully_vaccinated_bl == TRUE),
             n = n()) %>%
   mutate(RQ = "rq3_summary",
-         n = ifelse(n < threshold, -1, n),
-         range1 = ifelse(range1 < threshold, -1, range1))
+         n = ifelse(n > 0 & n < threshold, -1, n),
+         range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1))
 
 
 rq <- bind_rows(rq, rq3_summary)
@@ -373,8 +370,8 @@ df_doses <- df_clean %>%
          RQ = "rq3_distribution", 
          range1 = doses_nm) %>% 
   select(-doses_nm) %>%
-  mutate(n = ifelse(n < threshold, -1, n),
-         ratio = ifelse(n < threshold, NA, ratio))
+  mutate(n = ifelse(n > 0 & n < threshold, -1, n),
+         ratio = ifelse(n > 0 & n < threshold, NA, ratio))
 
 rq <- bind_rows(rq, df_doses)
 
@@ -386,7 +383,7 @@ for (col in columns_to_aggregate) {
     group_by_at(vars(col, 
                      fully_vaccinated_bl)) %>%
     summarise(n = n()) %>%
-    mutate(n = ifelse(n < threshold, -1, n))
+    mutate(n = ifelse(n > 0 & n < threshold, -1, n))
   
   stats_df$RQ <- paste0("rq3_", col)
   
@@ -406,10 +403,10 @@ for (col in columns_to_aggregate) {
               range2 = sum(range2),
               range3 = sum(range3),
               n = n()) %>%
-    mutate(n = ifelse(n < threshold, -1, n),
-           range1 = ifelse(range1 < threshold, -1, range1),
-           range2 = ifelse(range2 < threshold, -1, range2),
-           range3 = ifelse(range3 < threshold, -1, range3))
+    mutate(n = ifelse(n > 0 & n < threshold, -1, n),
+           range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
+           range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
+           range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
   stats_df$RQ <- paste0("rq3_", col, "_doses")
   
   rq <- bind_rows(rq, stats_df)
@@ -432,7 +429,7 @@ rq4_summary <- df_clean %>%
            fully_vaccinated_bl) %>% 
   summarise(n = n()) %>%
   mutate(RQ = "rq4_summary",
-         n = ifelse(n < threshold, -1, n))
+         n = ifelse(n > 0 & n < threshold, -1, n))
 
 rq <- bind_rows(rq, rq4_summary)
 
@@ -446,7 +443,7 @@ for (col in columns_to_aggregate) {
                      hospi_due_to_covid_bl, 
                      fully_vaccinated_bl)) %>%
     summarise(n = n()) %>% 
-    mutate(n = ifelse(n < threshold, -1, n))
+    mutate(n = ifelse(n > 0 & n < threshold, -1, n))
   
   stats_df$RQ <- paste0("rq4_", col)
   
