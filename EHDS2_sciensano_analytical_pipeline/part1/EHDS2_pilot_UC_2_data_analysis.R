@@ -148,7 +148,7 @@ df_tests <- df_clean %>%
          range1 = test_nm ) %>% 
   select(-test_nm) %>%
   mutate(n = ifelse(n > 0 & n < threshold, -1, n),
-         ratio = ifelse(n > 0 & n < threshold, NA, ratio))
+         ratio = ifelse(n == -1, NA, ratio))
 
 # range1 == positive tests
 df_pos_tests <- df_clean %>% 
@@ -158,7 +158,7 @@ df_pos_tests <- df_clean %>%
          range1 = test_positive_to_covid_nm) %>% 
   select(-test_positive_to_covid_nm) %>%
   mutate(n = ifelse(n > 0 & n < threshold, -1, n),
-         ratio = ifelse(n > 0 & n < threshold, NA, ratio))
+         ratio = ifelse(n == -1, NA, ratio))
 
 rq <- bind_rows(rq, df_tests)
 rq <- bind_rows(rq, df_pos_tests)
@@ -184,13 +184,13 @@ rq1_summary <- df_clean %>%
   mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
          upperfence = q3 + 1.5 * (q3 - q1),
          n = ifelse(n > 0 & n < threshold, -1, n),
-         q1 = ifelse(n > 0 & n < threshold, NA, q1),
-         median = ifelse(n > 0 & n < threshold, NA, median),
-         mean = ifelse(n > 0 & n < threshold, NA, mean),
-         q3 = ifelse(n > 0 & n < threshold, NA, q3),
-         sd = ifelse(n > 0 & n < threshold, NA, sd),
-         lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
-         upperfence = ifelse(n > 0 & n < threshold, NA, upperfence),
+         q1 = ifelse(n == -1, NA, q1),
+         median = ifelse(n == -1, NA, median),
+         mean = ifelse(n == -1, NA, mean),
+         q3 = ifelse(n == -1, NA, q3),
+         sd = ifelse(n == -1, NA, sd),
+         lowerfence = ifelse(n == -1, NA, lowerfence),
+         upperfence = ifelse(n == -1, NA, upperfence),
          RQ = "rq1_summary")
 
 rq <- bind_rows(rq, rq1_summary)
@@ -210,13 +210,13 @@ for (col in columns_to_aggregate) {
     mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
            upperfence = q3 + 1.5 * (q3 - q1),
            n = ifelse(n > 0 & n < threshold, -1, n),
-           q1 = ifelse(n > 0 & n < threshold, NA, q1),
-           median = ifelse(n > 0 & n < threshold, NA, median),
-           mean = ifelse(n > 0 & n < threshold, NA, mean),
-           q3 = ifelse(n > 0 & n < threshold, NA, q3),
-           sd = ifelse(n > 0 & n < threshold, NA, sd),
-           lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
-           upperfence = ifelse(n > 0 & n < threshold, NA, upperfence))
+           q1 = ifelse(n == -1, NA, q1),
+           median = ifelse(n == -1, NA, median),
+           mean = ifelse(n == -1, NA, mean),
+           q3 = ifelse(n == -1, NA, q3),
+           sd = ifelse(n == -1, NA, sd),
+           lowerfence = ifelse(n == -1, NA, lowerfence),
+           upperfence = ifelse(n == -1, NA, upperfence))
 
   stats_df$RQ <- paste0("rq1_", col)
   
@@ -268,13 +268,13 @@ rq2_summary <- df_clean %>%
   mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
          upperfence = q3 + 1.5 * (q3 - q1),
          n = ifelse(n > 0 & n < threshold, -1, n),
-         q1 = ifelse(n > 0 & n < threshold, NA, q1),
-         median = ifelse(n > 0 & n < threshold, NA, median),
-         mean = ifelse(n > 0 & n < threshold, NA, mean),
-         q3 = ifelse(n > 0 & n < threshold, NA, q3),
-         sd = ifelse(n > 0 & n < threshold, NA, sd),
-         lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
-         upperfence = ifelse(n > 0 & n < threshold, NA, upperfence),
+         q1 = ifelse(n == -1, NA, q1),
+         median = ifelse(n == -1, NA, median),
+         mean = ifelse(n == -1, NA, mean),
+         q3 = ifelse(n == -1, NA, q3),
+         sd = ifelse(n == -1, NA, sd),
+         lowerfence = ifelse(n == -1, NA, lowerfence),
+         upperfence = ifelse(n == -1, NA, upperfence),
          RQ = "rq2_summary")
 
 rq <- bind_rows(rq, rq2_summary)
@@ -295,13 +295,13 @@ for (col in columns_to_aggregate) {
     mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
            upperfence = q3 + 1.5 * (q3 - q1),
            n = ifelse(n > 0 & n < threshold, -1, n),
-           q1 = ifelse(n > 0 & n < threshold, NA, q1),
-           median = ifelse(n > 0 & n < threshold, NA, median),
-           mean = ifelse(n > 0 & n < threshold, NA, mean),
-           q3 = ifelse(n > 0 & n < threshold, NA, q3),
-           sd = ifelse(n > 0 & n < threshold, NA, sd),
-           lowerfence = ifelse(n > 0 & n < threshold, NA, lowerfence),
-           upperfence = ifelse(n > 0 & n < threshold, NA, upperfence))
+           q1 = ifelse(n == -1, NA, q1),
+           median = ifelse(n == -1, NA, median),
+           mean = ifelse(n == -1, NA, mean),
+           q3 = ifelse(n == -1, NA, q3),
+           sd = ifelse(n == -1, NA, sd),
+           lowerfence = ifelse(n == -1, NA, lowerfence),
+           upperfence = ifelse(n == -1, NA, upperfence))
   
   stats_df$RQ <- paste0("rq2_", col)
   
@@ -371,7 +371,7 @@ df_doses <- df_clean %>%
          range1 = doses_nm) %>% 
   select(-doses_nm) %>%
   mutate(n = ifelse(n > 0 & n < threshold, -1, n),
-         ratio = ifelse(n > 0 & n < threshold, NA, ratio))
+         ratio = ifelse(n == -1, NA, ratio))
 
 rq <- bind_rows(rq, df_doses)
 
