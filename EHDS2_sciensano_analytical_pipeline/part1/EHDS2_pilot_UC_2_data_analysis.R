@@ -1,7 +1,7 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.2" 
-# date of version : 12-06-24
+# script_version <- "1.3" 
+# date of version : 17-06-24
 
 library(tidyverse)
 library(DT)
