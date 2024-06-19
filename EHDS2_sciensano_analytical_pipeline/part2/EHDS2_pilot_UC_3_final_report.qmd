@@ -43,8 +43,8 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 
 ##### Script ######
-
-script_version <- "1.0"
+# version date: 19-06-24
+script_version <- "1.1"
 
 library(tidyverse)
 library(ggplot2)
@@ -60,7 +60,6 @@ data_types <- c(
   range2 = "numeric",
   range3 = "numeric",
   ratio = "numeric",
-  ratio2 = "numeric",
   education_level_cd = "character",
   income_category_cd = "character",
   household_type_cd = "character",
@@ -110,7 +109,6 @@ for (cntry in countries) {
 nuts_shape <- st_read(shapefile_path)
 
 nuts_shape <- nuts_shape %>% filter(CNTR_CODE == country)
-
 
 # get tresholded data
 # retrieve excluded groups
@@ -298,114 +296,87 @@ barplot_grouped_custom1 <- function(data1, x_var1, y_var1,
 }
 
 
-rq3_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$ratio, na.color = "lightgrey")
+
+choropleth_map <- function(dataRQ, 
+                            color, 
+                            groupBy,
+                            subdata, 
+                            variable,
+                            title, 
+                            legend) {
+  
+  # Filter out NA and Inf values to determine the valid range for the color palette
+  valid_values <- dataRQ[[variable]][!is.na(dataRQ[[variable]]) & !is.infinite(dataRQ[[variable]])]
+  
+  # If there are no valid values, set a default range
+  if (length(valid_values) == 0) {
+    valid_values <- c(0, 1)
+  }
+  
+  custom_palette <- colorNumeric(palette = color, domain = valid_values, na.color = "lightgrey")
   
   map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(type == 'overall'), 
-                fillColor = ~custom_palette(ratio), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Vaccinated:<span style='color: black; font-weight: bold;'>", round(ratio, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Overall") %>%
-    addPolygons(data = dataRQ %>% filter(type == 'subgroup'), 
-                fillColor = ~custom_palette(ratio), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Vaccinated:<span style='color: black; font-weight: bold;'>", round(ratio, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Subgroup") %>%
+    addProviderTiles(providers$CartoDB.Positron)
+  if (is.null(subdata) || length(subdata) == 0) {
+    map <- map %>%
+      addPolygons(data = dataRQ, 
+                  fillColor = ~custom_palette(get(variable)), 
+                  fillOpacity = 0.7,
+                  weight = 1, 
+                  opacity = 1, 
+                  dashArray = "5, 5", 
+                  color = "white", 
+                  smoothFactor = 0.5,
+                  label = ~paste(
+                    "<div style='font-size:14px;'>",  # Increase font size here
+                    "ID: ", NUTS_ID, "<br/>",
+                    "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
+                    "n: ", n, "<br/>",
+                    title, ":<span style='color: black; font-weight: bold;'>", round(get(variable), 2), "%</span><br/>",
+                    "</div>"
+                  ) %>% lapply(htmltools::HTML))
+    
+  } else {
+    for (group in subdata) {
+      filtered_data <- dataRQ %>% filter(get(groupBy) == group)
+      map <- map %>%
+        addPolygons(data = filtered_data,
+                    fillColor = ~custom_palette(get(variable)),
+                    fillOpacity = 0.7,
+                    weight = 1,
+                    opacity = 1,
+                    dashArray = "5, 5",
+                    color = "white",
+                    smoothFactor = 0.5,
+                    label = ~paste(
+                      "<div style='font-size:14px;'>",  # Increase font size here
+                      "ID: ", NUTS_ID, "<br/>",
+                      "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
+                      "n: ", n, "<br/>",
+                      group, ":<span style='color: black; font-weight: bold;'>", round(get(variable), 2), "%</span><br/>",
+                      "</div>"
+                    ) %>% lapply(htmltools::HTML),
+                    group = group)
+    }
+  }
+  map <- map %>%
     addLegend(
       position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$ratio[!is.na(dataRQ$ratio)],
-      title = "Vaccination (%)",
+      pal = custom_palette,
+      values = ~dataRQ[[variable]][!is.na(dataRQ[[variable]])],
+      title = legend,
       labFormat = labelFormat(suffix = "%"),
       opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("Subgroup", "Overall"),
-                     options = layersControlOptions(collapsed = FALSE))
+    )
+  if (!is.null(groupBy)) {
+    map <- map %>%
+      addLayersControl(baseGroups = subdata,
+                       options = layersControlOptions(collapsed = FALSE))
+  }
+
   
   return(map)
 }
-
-
-rq4_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$ratio, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(type == 'overall'), 
-                fillColor = ~custom_palette(ratio), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(ratio, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Overall") %>%
-    addPolygons(data = dataRQ %>% filter(type == 'subgroup'), 
-                fillColor = ~custom_palette(ratio), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(ratio, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Subgroup") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$ratio[!is.na(dataRQ$ratio)],
-      title = "Hospitalisation (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("Subgroup", "Overall"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
-
 
 # Extract cohort info
 dataset_info <- df %>% filter(RQ == "dataset_info") %>% select(n, range1, range2, range3)
@@ -1808,7 +1779,7 @@ The study population consists of all residents of a country tested and/or vaccin
 
 ::: panel-tabset
 
-### Tests distributions
+### Tests distribution
 
 ```{r RQ12 distribution}
 #| echo: false
@@ -2484,8 +2455,9 @@ p1_plotly
 #| fig-width: 10
 #| fig-height: 5
 
-rq1_2_age_group <- rq1_2_age_group %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq1_2_age_group <- rq1_2_age_group %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(age_cd = "Age groups", 
                    n = "N", 
@@ -2564,7 +2536,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq1_2_age_tests <- rq1_2_age_tests %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_age_tests <- rq1_2_age_tests %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(age_cd = "Age groups", 
@@ -2626,7 +2600,9 @@ p1_plotly
 #| fig-width: 10
 #| fig-height: 5
 
-rq1_2_gender <- rq1_2_gender %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_gender <- rq1_2_gender %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(sex_cd = "Gender", 
                    n = "N", 
@@ -2704,7 +2680,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq1_2_gender_tests <- rq1_2_gender_tests %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_gender_tests <- rq1_2_gender_tests %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(sex_cd = "Gender", 
                    type = "Tests",
@@ -2741,7 +2719,7 @@ datatable(rq1_2_gender_tests_table,
 
 Average number of COVID-19 PCR tests (all & Positive tests).
 
-```{r RQ1 area map1}
+```{r RQ12 area nuts2}
 #| echo: false
 #| warning: false
 #| error: false
@@ -2757,63 +2735,18 @@ nuts2 <- nuts_shape %>%
 
 rq1_2_area_nuts2_with_geometry <- left_join(nuts2, rq1_2_area, join_by(NUTS_ID == residence_area_nuts2_cd, type == type)) %>% distinct()
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$mean, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(type == 'All'),
-                fillColor = ~custom_palette(mean),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "All tests:<span style='color: black; font-weight: bold;'>", round(mean, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "All") %>%
-    addPolygons(data = dataRQ %>% filter(type == 'Positives'),
-                fillColor = ~custom_palette(mean),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Positives tests:<span style='color: black; font-weight: bold;'>", round(mean, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Positives") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$mean[!is.na(dataRQ$mean)],
-      title = "Average PCR Tests",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("All", "Positives"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
+subdata <- c("All", "Positives")
 
 rq1_2_area_nuts2_with_geometry <- st_as_sf(rq1_2_area_nuts2_with_geometry)
 
-map <- rq3_choropleth_map2(rq1_2_area_nuts2_with_geometry, "viridis")
+
+map <- choropleth_map(rq1_2_area_nuts2_with_geometry, 
+                           "viridis", 
+                           "type",
+                           subdata, 
+                           "mean", 
+                           "PCR Test Results", 
+                           "Distribution (%)")
 map
 
 
@@ -2840,7 +2773,9 @@ nuts2 <- nuts_shape %>%
 
 rq1_2_area_nuts2 <- left_join(nuts2, rq1_2_area, join_by(NUTS_ID == residence_area_nuts2_cd, type == type)) %>% distinct()
 
-rq1_2_area_nuts2 <- rq1_2_area_nuts2 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_area_nuts2 <- rq1_2_area_nuts2 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(NUTS_ID = "NUTS2",
@@ -2890,83 +2825,20 @@ rq1_2_area_nuts2_tests_with_geometry <- rq1_2_area_nuts2_tests_with_geometry %>%
   filter(type == 'All') %>%
   mutate(value = value*100)
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$value, na.color = "lightgrey")
 
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(tests == '0'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "0 test:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "0 test") %>%
-    addPolygons(data = dataRQ %>% filter(tests == '1 to 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "1 to 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "1 to 5 tests") %>%
-    addPolygons(data = dataRQ %>% filter(tests == 'more than 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "more than 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "more than 5 tests") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$value[!is.na(dataRQ$value)],
-      title = "Distribution (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("0 test", "1 to 5 tests", "more than 5 tests"),
-                     options = layersControlOptions(collapsed = FALSE))
-
-  return(map)
-}
-
+subdata <- c("0", "1 to 5", "more than 5")
 
 rq1_2_area_nuts2_tests_with_geometry <- st_as_sf(rq1_2_area_nuts2_tests_with_geometry)
 
 
-map <- rq3_choropleth_map2(rq1_2_area_nuts2_tests_with_geometry, "viridis")
+map <- choropleth_map(rq1_2_area_nuts2_tests_with_geometry, 
+                            "viridis", 
+                            "tests",
+                            subdata, 
+                            "value", 
+                            "PCR Test Results", 
+                            "Distribution (%)")
 map
-
 
 
 ```
@@ -2995,81 +2867,18 @@ rq1_2_area_nuts2_tests_with_geometry <- rq1_2_area_nuts2_tests_with_geometry %>%
   filter(type == 'Positives') %>%
   mutate(value = value*100)
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$value, na.color = "lightgrey")
-
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(tests == '0'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "0 test:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "0 test") %>%
-    addPolygons(data = dataRQ %>% filter(tests == '1 to 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "1 to 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "1 to 5 tests") %>%
-    addPolygons(data = dataRQ %>% filter(tests == 'more than 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "more than 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "more than 5 tests") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$value[!is.na(dataRQ$value)],
-      title = "Distribution (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("0 test", "1 to 5 tests", "more than 5 tests"),
-                     options = layersControlOptions(collapsed = FALSE))
-
-  return(map)
-}
-
+subdata <- c("0", "1 to 5", "more than 5")
 
 rq1_2_area_nuts2_tests_with_geometry <- st_as_sf(rq1_2_area_nuts2_tests_with_geometry)
 
 
-map <- rq3_choropleth_map2(rq1_2_area_nuts2_tests_with_geometry, "viridis")
+map <- choropleth_map(rq1_2_area_nuts2_tests_with_geometry, 
+                            "viridis", 
+                            "tests",
+                            subdata, 
+                            "value", 
+                            "PCR Test Results", 
+                            "Distribution (%)")
 map
 
 
@@ -3093,7 +2902,9 @@ rq1_2_area_nuts2 <- nuts_shape %>%
 
 rq1_2_area_nuts2_tests <- left_join(rq1_2_area_nuts2, rq1_2_area_nuts2_tests, join_by(NUTS_ID == residence_area_nuts2_cd))
 
-rq1_2_area_nuts2_tests <- rq1_2_area_nuts2_tests %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_area_nuts2_tests <- rq1_2_area_nuts2_tests %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "NUTS2",
                    NUTS_NAME = "Area",
@@ -3127,7 +2938,7 @@ datatable(rq1_2_area_nuts2_tests_table,
 
 Average number of COVID-19 PCR tests (all & Positive tests).
 
-```{r RQ1 area map2}
+```{r RQ12 area nuts3}
 #| echo: false
 #| warning: false
 #| error: false
@@ -3144,65 +2955,19 @@ nuts3 <- nuts_shape %>%
 
 rq1_2_area_nuts3_with_geometry <- left_join(nuts3, rq1_2_area, join_by(NUTS_ID == residence_area_cd, type == type)) %>% distinct()
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$mean, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(type == 'All'),
-                fillColor = ~custom_palette(mean),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "All tests:<span style='color: black; font-weight: bold;'>", round(mean, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "All") %>%
-    addPolygons(data = dataRQ %>% filter(type == 'Positives'),
-                fillColor = ~custom_palette(mean),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Positives tests:<span style='color: black; font-weight: bold;'>", round(mean, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Positives") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$mean[!is.na(dataRQ$mean)],
-      title = "Average PCR Tests",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("All", "Positives"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
+subdata <- c("All", "Positives")
 
 rq1_2_area_nuts3_with_geometry <- st_as_sf(rq1_2_area_nuts3_with_geometry)
 
-map <- rq3_choropleth_map2(rq1_2_area_nuts3_with_geometry, "viridis")
-map
 
+map <- choropleth_map(rq1_2_area_nuts3_with_geometry, 
+                           "viridis", 
+                           "type",
+                           subdata, 
+                           "mean", 
+                           "PCR Test Results", 
+                           "Distribution (%)")
+map
 
 
 ```
@@ -3228,7 +2993,9 @@ nuts3 <- nuts_shape %>%
 
 rq1_2_area_nuts3 <- left_join(nuts3, rq1_2_area, join_by(NUTS_ID == residence_area_cd, type == type)) %>% distinct()
 
-rq1_2_area_nuts3 <- rq1_2_area_nuts3 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_area_nuts3 <- rq1_2_area_nuts3 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(NUTS_ID = "NUTS3",
@@ -3278,83 +3045,19 @@ rq1_2_area_nuts3_tests_with_geometry <- rq1_2_area_nuts3_tests_with_geometry %>%
   filter(type == 'All') %>%
   mutate(value = value*100)
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$value, na.color = "lightgrey")
-
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(tests == '0'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "0 test:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "0 test") %>%
-    addPolygons(data = dataRQ %>% filter(tests == '1 to 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "1 to 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "1 to 5 tests") %>%
-    addPolygons(data = dataRQ %>% filter(tests == 'more than 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "more than 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "more than 5 tests") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$value[!is.na(dataRQ$value)],
-      title = "Distribution (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("0 test", "1 to 5 tests", "more than 5 tests"),
-                     options = layersControlOptions(collapsed = FALSE))
-
-  return(map)
-}
-
+subdata <- c("0", "1 to 5", "more than 5")
 
 rq1_2_area_nuts3_tests_with_geometry <- st_as_sf(rq1_2_area_nuts3_tests_with_geometry)
 
 
-map <- rq3_choropleth_map2(rq1_2_area_nuts3_tests_with_geometry, "viridis")
+map <- choropleth_map(rq1_2_area_nuts3_tests_with_geometry, 
+                            "viridis", 
+                            "tests",
+                            subdata, 
+                            "value", 
+                            "PCR Test Results", 
+                            "Distribution (%)")
 map
-
 
 ```
 
@@ -3382,81 +3085,18 @@ rq1_2_area_nuts3_tests_with_geometry <- rq1_2_area_nuts3_tests_with_geometry %>%
   filter(type == 'Positives') %>%
   mutate(value = value*100)
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$value, na.color = "lightgrey")
-
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(tests == '0'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "0 test:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "0 test") %>%
-    addPolygons(data = dataRQ %>% filter(tests == '1 to 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "1 to 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "1 to 5 tests") %>%
-    addPolygons(data = dataRQ %>% filter(tests == 'more than 5'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "more than 5 tests:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "more than 5 tests") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$value[!is.na(dataRQ$value)],
-      title = "Distribution (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("0 test", "1 to 5 tests", "more than 5 tests"),
-                     options = layersControlOptions(collapsed = FALSE))
-
-  return(map)
-}
-
+subdata <- c("0", "1 to 5", "more than 5")
 
 rq1_2_area_nuts3_tests_with_geometry <- st_as_sf(rq1_2_area_nuts3_tests_with_geometry)
 
 
-map <- rq3_choropleth_map2(rq1_2_area_nuts3_tests_with_geometry, "viridis")
+map <- choropleth_map(rq1_2_area_nuts3_tests_with_geometry, 
+                            "viridis", 
+                            "tests",
+                            subdata, 
+                            "value", 
+                            "PCR Test Results", 
+                            "Distribution (%)")
 map
 
 
@@ -3480,7 +3120,9 @@ rq1_2_area_nuts3 <- nuts_shape %>%
 
 rq1_2_area_nuts3_tests <- left_join(rq1_2_area_nuts3, rq1_2_area_nuts3_tests, join_by(NUTS_ID == residence_area_cd))
 
-rq1_2_area_nuts3_tests <- rq1_2_area_nuts3_tests %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_area_nuts3_tests <- rq1_2_area_nuts3_tests %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "NUTS3",
                    NUTS_NAME = "Area",
@@ -3531,8 +3173,9 @@ rq1_2_area_lau <- nuts_shape %>%
 
 rq1_2_area_lau <- left_join(rq1_2_area_lau, rq1_2_area, join_by(NUTS_ID == residence_area_lau_cd))
 
-rq1_2_area_lau <- rq1_2_area_lau %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq1_2_area_lau <- rq1_2_area_lau %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "LAU2",
                    NUTS_NAME = "Area", 
@@ -3555,7 +3198,7 @@ datatable(rq1_2_area_table,
 
 ```
 
-#### Tests distributions
+#### Tests distribution
 
 
 
@@ -3575,7 +3218,9 @@ rq1_2_area_lau <- nuts_shape %>%
 
 rq1_2_area_lau2_tests <- left_join(rq1_2_area_lau, rq1_2_area_lau2_tests, join_by(NUTS_ID == residence_area_lau_cd))
 
-rq1_2_area_lau2_tests <- rq1_2_area_lau2_tests %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq1_2_area_lau2_tests <- rq1_2_area_lau2_tests %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "LAU2",
                    NUTS_NAME = "Area",
@@ -3627,7 +3272,7 @@ plot_ly() %>%
 
 ```
 
-### Doses distributions
+### Doses distribution
 
 Distribution of COVID-19 vaccine doses within the cohort.
 
@@ -3663,7 +3308,9 @@ Vaccination rate within different socioeconomic profils.
 #| fig-width: 10
 #| fig-height: 8
 
-rq3_summary <- rq3_summary %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_summary <- rq3_summary %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(education_level_cd = "Education",
                    income_category_cd = "Income",
@@ -3753,7 +3400,9 @@ p1_plotly
 
 rq3_education_aggreg <- rq3_education_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_education_aggreg <- rq3_education_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_education_aggreg <- rq3_education_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(education_level_cd = "Education Level",
                    n = "N", # Total individuals per group
@@ -3811,7 +3460,9 @@ p1_plotly
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_education_doses <- rq3_education_doses %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_education_doses <- rq3_education_doses %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(education_level_cd = "Education Level",
                    n = "N", # Total individuals per group
@@ -3898,7 +3549,9 @@ p1_plotly
 
 rq3_income_aggreg <- rq3_income_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_income_aggreg <- rq3_income_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_income_aggreg <- rq3_income_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(income_category_cd = "Income Category", 
@@ -3953,7 +3606,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_income_doses <- rq3_income_doses %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_income_doses <- rq3_income_doses %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(income_category_cd = "Income Category", 
@@ -4041,7 +3696,9 @@ p1_plotly
 
 rq3_migration_aggreg <- rq3_migration_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_migration_aggreg <- rq3_migration_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_migration_aggreg <- rq3_migration_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(migration_background_cd = "Migration Background", 
@@ -4095,7 +3752,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_migration_doses <- rq3_migration_doses %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_migration_doses <- rq3_migration_doses %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(migration_background_cd = "Migration Background", 
@@ -4185,7 +3844,9 @@ p1_plotly
 
 rq3_household_aggreg <- rq3_household_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_household_aggreg <- rq3_household_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_household_aggreg <- rq3_household_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(household_type_cd = "Household type", 
@@ -4239,7 +3900,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_household_doses <- rq3_household_doses %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_household_doses <- rq3_household_doses %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(household_type_cd = "Household type", 
@@ -4329,8 +3992,9 @@ p1_plotly
 
 rq3_age_aggreg <- rq3_age_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_age_aggreg <- rq3_age_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_age_aggreg <- rq3_age_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(age_cd = "Age groups", 
                    n = "N", # Total individuals per group
@@ -4384,8 +4048,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_age_doses <- rq3_age_doses %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_age_doses <- rq3_age_doses %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(age_cd = "Age groups", 
                    n = "N", # Total individuals per group
@@ -4472,7 +4137,9 @@ p1_plotly
 
 rq3_gender_aggreg <- rq3_gender_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_gender_aggreg <- rq3_gender_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_gender_aggreg <- rq3_gender_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(sex_cd = "Gender", 
@@ -4526,7 +4193,9 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_gender_doses <- rq3_gender_doses %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq3_gender_doses <- rq3_gender_doses %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(sex_cd = "Gender", 
@@ -4585,45 +4254,19 @@ rq3_area_nuts2_with_geometry <- rq3_area_nuts2_with_geometry %>%
 
 rq3_area_nuts2_with_geometry <- rq3_area_nuts2_with_geometry %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$overall, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% select(-subgroup), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Vaccination:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$overall[!is.na(dataRQ$overall)],
-      title = "Vaccination (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    )
-  
-  return(map)
-}
-
+rq3_area_nuts2_with_geometry <- rq3_area_nuts2_with_geometry %>% select(-subgroup)
 
 rq3_area_nuts2_with_geometry <- st_as_sf(rq3_area_nuts2_with_geometry)
 
-map <- rq3_choropleth_map(rq3_area_nuts2_with_geometry, "viridis")
+map <- choropleth_map(rq3_area_nuts2_with_geometry, 
+                          "viridis",
+                          groupBy = NULL,
+                          subdata = NULL, 
+                          "overall",
+                          "Vaccination",
+                          "Vaccination (%)")
 map
+
 
 ```
 
@@ -4655,44 +4298,17 @@ rq3_area_nuts2_with_geometry <- rq3_area_nuts2_with_geometry %>%
 
 rq3_area_nuts2_with_geometry <- rq3_area_nuts2_with_geometry %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$subgroup, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% select(-overall), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Vaccination:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$subgroup[!is.na(dataRQ$subgroup)],
-      title = "Vaccination (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    )
-  
-  return(map)
-}
-
+rq3_area_nuts2_with_geometry <- rq3_area_nuts2_with_geometry %>% select(-overall)
 
 rq3_area_nuts2_with_geometry <- st_as_sf(rq3_area_nuts2_with_geometry)
 
-map <- rq3_choropleth_map(rq3_area_nuts2_with_geometry, "viridis")
+map <- choropleth_map(rq3_area_nuts2_with_geometry, 
+                          "viridis",
+                          groupBy = NULL,
+                          subdata = NULL, 
+                          "subgroup",
+                          "Vaccination",
+                          "Vaccination (%)")
 map
 
 
@@ -4764,84 +4380,19 @@ rq3_area_nuts2 <- nuts_shape %>%
 rq3_area_nuts2_doses_with_geometry <- left_join(rq3_area_nuts2, rq3_area_nuts2_doses, join_by(NUTS_ID == residence_area_nuts2_cd, doses == doses)) %>% distinct() %>%
   mutate(value = value*100)
 
-
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$value, na.color = "lightgrey")
-
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(doses == '0'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "0 dose:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "0 dose") %>%
-    addPolygons(data = dataRQ %>% filter(doses == '1'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "1 dose:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "1 dose") %>%
-    addPolygons(data = dataRQ %>% filter(doses == '2 or more'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "2 or more doses:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "2 or more doses") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$value[!is.na(dataRQ$value)],
-      title = "Distribution (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("0 dose", "1 dose", "2 or more doses"),
-                     options = layersControlOptions(collapsed = FALSE))
-
-  return(map)
-}
-
+subdata <- c("0", "1", "2 or more")
 
 rq3_area_nuts2_doses_with_geometry <- st_as_sf(rq3_area_nuts2_doses_with_geometry)
 
 
-map <- rq3_choropleth_map2(rq3_area_nuts2_doses_with_geometry, "viridis")
+map <- choropleth_map(rq3_area_nuts2_doses_with_geometry, 
+                            "viridis", 
+                            "doses",
+                            subdata, 
+                            "value", 
+                            "Doses distribution", 
+                            "Distribution (%)")
 map
-
 
 
 ```
@@ -4871,8 +4422,9 @@ rq3_area_nuts2 <- nuts_shape %>%
 rq3_area_nuts2 <- left_join(rq3_area_nuts2, rq3_area_nuts2_doses, join_by(NUTS_ID == residence_area_nuts2_cd, doses == doses)) %>% distinct()
 
 
-rq3_area_nuts2 <- rq3_area_nuts2 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_area_nuts2 <- rq3_area_nuts2 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 rq3_area_nuts2 <- rq3_area_nuts2 %>% st_drop_geometry
 
@@ -4929,44 +4481,17 @@ rq3_area_nuts3_with_geometry <- rq3_area_nuts3_with_geometry %>%
 
 rq3_area_nuts3_with_geometry <- rq3_area_nuts3_with_geometry %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$overall, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% select(-subgroup), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Vaccination:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$overall[!is.na(dataRQ$overall)],
-      title = "Vaccination (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    )
-  
-  return(map)
-}
-
+rq3_area_nuts3_with_geometry <- rq3_area_nuts3_with_geometry %>% select(-subgroup)
 
 rq3_area_nuts3_with_geometry <- st_as_sf(rq3_area_nuts3_with_geometry)
 
-map <- rq3_choropleth_map(rq3_area_nuts3_with_geometry, "viridis")
+map <- choropleth_map(rq3_area_nuts3_with_geometry, 
+                          "viridis",
+                          groupBy = NULL,
+                          subdata = NULL, 
+                          "overall",
+                          "Vaccination",
+                          "Vaccination (%)")
 map
 
 ```
@@ -4999,46 +4524,18 @@ rq3_area_nuts3_with_geometry <- rq3_area_nuts3_with_geometry %>%
 
 rq3_area_nuts3_with_geometry <- rq3_area_nuts3_with_geometry %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$subgroup, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% select(-overall), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Vaccination:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$subgroup[!is.na(dataRQ$subgroup)],
-      title = "Vaccination (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    )
-  
-  return(map)
-}
-
+rq3_area_nuts3_with_geometry <- rq3_area_nuts3_with_geometry %>% select(-overall)
 
 rq3_area_nuts3_with_geometry <- st_as_sf(rq3_area_nuts3_with_geometry)
 
-map <- rq3_choropleth_map(rq3_area_nuts3_with_geometry, "viridis")
+map <- choropleth_map(rq3_area_nuts3_with_geometry, 
+                          "viridis",
+                          groupBy = NULL,
+                          subdata = NULL, 
+                          "subgroup",
+                          "Vaccination",
+                          "Vaccination (%)")
 map
-
 
 ```
 
@@ -5064,8 +4561,9 @@ rq3_area_nuts3 <- nuts_shape %>%
 
 rq3_area_nuts3 <- left_join(rq3_area_nuts3, rq3_area_nuts3_aggreg, join_by(NUTS_ID == residence_area_cd))
 
-rq3_area_nuts3 <- rq3_area_nuts3 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_area_nuts3 <- rq3_area_nuts3 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 rq3_area_nuts3 <- rq3_area_nuts3 %>% filter(fully_vaccinated_bl == TRUE) %>% distinct()
 
@@ -5111,83 +4609,19 @@ rq3_area_nuts3_doses_with_geometry <- left_join(rq3_area_nuts3, rq3_area_nuts3_d
   mutate(value = value*100)
 
 
-rq3_choropleth_map2 <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$value, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(doses == '0'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "0 dose:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "0 dose") %>%
-    addPolygons(data = dataRQ %>% filter(doses == '1'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "1 dose:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "1 dose") %>%
-    addPolygons(data = dataRQ %>% filter(doses == '2 or more'),
-                fillColor = ~custom_palette(value),
-                fillOpacity = 0.7,
-                weight = 1,
-                opacity = 1,
-                dashArray = "5, 5",
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "2 or more doses:<span style='color: black; font-weight: bold;'>", round(value, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "2 or more doses") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette,
-      values = ~dataRQ$value[!is.na(dataRQ$value)],
-      title = "Distribution (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("0 dose", "1 dose", "2 or more doses"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
+subdata <- c("0", "1", "2 or more")
 
 rq3_area_nuts3_doses_with_geometry <- st_as_sf(rq3_area_nuts3_doses_with_geometry)
 
 
-map <- rq3_choropleth_map2(rq3_area_nuts3_doses_with_geometry, "viridis")
+map <- choropleth_map(rq3_area_nuts3_doses_with_geometry, 
+                            "viridis", 
+                            "doses",
+                            subdata, 
+                            "value", 
+                            "Doses distribution", 
+                            "Distribution (%)")
 map
-
 
 
 ```
@@ -5213,8 +4647,9 @@ rq3_area_nuts3 <- nuts_shape %>%
 
 rq3_area_nuts3 <- left_join(rq3_area_nuts3, rq3_area_nuts3_doses, join_by(NUTS_ID == residence_area_cd, doses == doses)) %>% distinct()
 
-rq3_area_nuts3 <- rq3_area_nuts3 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_area_nuts3 <- rq3_area_nuts3 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 rq3_area_nuts3 <- rq3_area_nuts3 %>% st_drop_geometry
 
@@ -5266,8 +4701,9 @@ rq3_area_lau2 <- left_join(rq3_area_lau2, rq3_area_lau2_aggreg, join_by(NUTS_ID 
 
 rq3_area_lau2 <- rq3_area_lau2 %>% filter(fully_vaccinated_bl == TRUE) %>% distinct()
 
-rq3_area_lau2 <- rq3_area_lau2 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_area_lau2 <- rq3_area_lau2 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "LAU2",
                    NUTS_NAME = "Area",
@@ -5311,8 +4747,9 @@ rq3_area_lau2 <- nuts_shape %>%
 
 rq3_area_lau2 <- left_join(rq3_area_lau2, rq3_area_lau2_doses, join_by(NUTS_ID == residence_area_lau_cd, doses == doses)) %>% distinct()
 
-rq3_area_lau2 <- rq3_area_lau2 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq3_area_lau2 <- rq3_area_lau2 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 rq3_area_lau2 <- rq3_area_lau2 %>% st_drop_geometry
 
@@ -5399,7 +4836,9 @@ Percentage of COVID-19 hospitalisation in different socioeconomic profils.
 
 rq4_summary <- rq4_summary %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_summary <- rq4_summary %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq4_summary <- rq4_summary %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(education_level_cd = "Education",
                    income_category_cd = "Income",
@@ -5550,7 +4989,9 @@ expanded_df <- rq4_education_aggreg %>%
 rq4_education_aggreg <- expanded_df %>%
   left_join(rq4_education_aggreg, join_by("education_level_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_education_aggreg <- rq4_education_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
+rq4_education_aggreg <- rq4_education_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
 new_col_names <- c(education_level_cd = "Education Level",
@@ -5705,8 +5146,9 @@ expanded_df <- rq4_income_aggreg %>%
 rq4_income_aggreg <- expanded_df %>%
   left_join(rq4_income_aggreg, join_by("income_category_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_income_aggreg <- rq4_income_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_income_aggreg <- rq4_income_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(income_category_cd = "Income Level",
                    cohort = "Cohort",
@@ -5861,8 +5303,9 @@ expanded_df <- rq4_migration_aggreg %>%
 rq4_migration_aggreg <- expanded_df %>%
   left_join(rq4_migration_aggreg, join_by("migration_background_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_migration_aggreg <- rq4_migration_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_migration_aggreg <- rq4_migration_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(migration_background_cd = "Migration Migration",
                    cohort = "Cohort",
@@ -6016,8 +5459,9 @@ expanded_df <- rq4_household_aggreg %>%
 rq4_household_aggreg <- expanded_df %>%
   left_join(rq4_household_aggreg, join_by("household_type_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_household_aggreg <- rq4_household_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_household_aggreg <- rq4_household_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(household_type_cd = "Household Type",
                    cohort = "Cohort",
@@ -6170,8 +5614,9 @@ expanded_df <- rq4_age_aggreg %>%
 rq4_age_aggreg <- expanded_df %>%
   left_join(rq4_age_aggreg, join_by("age_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_age_aggreg <- rq4_age_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_age_aggreg <- rq4_age_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(age_cd = "Age groups",
                    cohort = "Cohort",
@@ -6322,8 +5767,9 @@ expanded_df <- rq4_gender_aggreg %>%
 rq4_gender_aggreg <- expanded_df %>%
   left_join(rq4_gender_aggreg, join_by("sex_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_gender_aggreg <- rq4_gender_aggreg %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_gender_aggreg <- rq4_gender_aggreg %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(sex_cd = "Gender",
                    cohort = "Cohort",
@@ -6385,84 +5831,19 @@ rq4_area_nuts2_with_geometry <- rq4_area_nuts2_with_geometry %>%
          subgroup = round(subgroup*100, 2))
 
 
-
-
-rq4_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$overall, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'All'), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Vaccinated'), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Vaccinated cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Unvaccinated'), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Unvaccinated cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$overall[!is.na(dataRQ$overall)],
-      title = "Hospitalisation (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("In Whole cohort", "Vaccinated cohort", "Unvaccinated cohort"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
-
 rq4_area_nuts2_with_geometry <- st_as_sf(rq4_area_nuts2_with_geometry)
 
-map <- rq4_choropleth_map(rq4_area_nuts2_with_geometry, "viridis")
-map
 
+subdata <- c("All", "Vaccinated", "Unvaccinated")
+
+map <- choropleth_map(rq4_area_nuts2_with_geometry, 
+                              "viridis", 
+                              "cohort",
+                              subdata, 
+                              "overall", 
+                              "COVID-19 Hospitalisation rate", 
+                              "Hospitalisation (%)")
+map
 
 
 ```
@@ -6497,81 +5878,18 @@ rq4_area_nuts2_with_geometry <- rq4_area_nuts2_with_geometry %>%
 
 
 
-
-rq4_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$subgroup, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'All'), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Vaccinated'), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Vaccinated cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Unvaccinated'), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Unvaccinated cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$subgroup[!is.na(dataRQ$subgroup)],
-      title = "Hospitalisation (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("In Whole cohort", "Vaccinated cohort", "Unvaccinated cohort"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
 rq4_area_nuts2_with_geometry <- st_as_sf(rq4_area_nuts2_with_geometry)
 
 
-map <- rq4_choropleth_map(rq4_area_nuts2_with_geometry, "viridis")
+subdata <- c("All", "Vaccinated", "Unvaccinated")
+
+map <- choropleth_map(rq4_area_nuts2_with_geometry, 
+                              "viridis", 
+                              "cohort",
+                              subdata, 
+                              "subgroup", 
+                              "COVID-19 Hospitalisation rate", 
+                              "Hospitalisation (%)")
 map
 
 
@@ -6599,8 +5917,9 @@ expanded_df <- rq4_area_nuts2 %>%
 rq4_area_nuts2 <- expanded_df %>%
   left_join(rq4_area_nuts2, join_by("NUTS_ID", "NUTS_NAME", "cohort"))
 
-rq4_area_nuts2 <- rq4_area_nuts2 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_area_nuts2 <- rq4_area_nuts2 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "NUTS2",
                    NUTS_NAME = "Name", 
@@ -6659,82 +5978,19 @@ rq4_area_nuts3_with_geometry <- rq4_area_nuts3_with_geometry %>%
          subgroup = round(subgroup*100, 2))
 
 
-rq4_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$overall, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'All'), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Vaccinated'), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Vaccinated cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Unvaccinated'), 
-                fillColor = ~custom_palette(overall), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(overall, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Unvaccinated cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$overall[!is.na(dataRQ$overall)],
-      title = "Hospitalisation (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("In Whole cohort", "Vaccinated cohort", "Unvaccinated cohort"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
 rq4_area_nuts3_with_geometry <- st_as_sf(rq4_area_nuts3_with_geometry)
 
 
-map <- rq4_choropleth_map(rq4_area_nuts3_with_geometry, "viridis")
-map
+subdata <- c("All", "Vaccinated", "Unvaccinated")
 
+map <- choropleth_map(rq4_area_nuts3_with_geometry, 
+                              "viridis", 
+                              "cohort",
+                              subdata, 
+                              "overall", 
+                              "COVID-19 Hospitalisation rate", 
+                              "Hospitalisation (%)")
+map
 
 ```
 
@@ -6765,83 +6021,18 @@ rq4_area_nuts3_with_geometry <- rq4_area_nuts3_with_geometry %>%
   mutate(overall = round(overall*100, 2),
          subgroup = round(subgroup*100, 2))
 
-
-
-
-rq4_choropleth_map <- function(dataRQ, color) {
-  custom_palette <- colorNumeric(palette = color, domain = dataRQ$subgroup, na.color = "lightgrey")
-  
-  map <- leaflet(dataRQ) %>%
-    addProviderTiles(providers$CartoDB.Positron) %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'All'), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white", 
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "In Whole cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Vaccinated'), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Vaccinated cohort") %>%
-    addPolygons(data = dataRQ %>% filter(cohort == 'Unvaccinated'), 
-                fillColor = ~custom_palette(subgroup), 
-                fillOpacity = 0.7,
-                weight = 1, 
-                opacity = 1, 
-                dashArray = "5, 5", 
-                color = "white",
-                smoothFactor = 0.5,
-                label = ~paste(
-                  "<div style='font-size:14px;'>",  # Increase font size here
-                  "ID: ", NUTS_ID, "<br/>",
-                  "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
-                  "n: ", n, "<br/>",
-                  "Hospitalisation:<span style='color: black; font-weight: bold;'>", round(subgroup, 2), "%</span><br/>",
-                  "</div>"
-                ) %>% lapply(htmltools::HTML),
-                group = "Unvaccinated cohort") %>%
-    addLegend(
-      position = "bottomright",
-      pal = custom_palette, 
-      values = ~dataRQ$subgroup[!is.na(dataRQ$subgroup)],
-      title = "Hospitalisation (%)",
-      labFormat = labelFormat(suffix = "%"),
-      opacity = 1
-    ) %>%
-    addLayersControl(baseGroups = c("In Whole cohort", "Vaccinated cohort", "Unvaccinated cohort"),
-                     options = layersControlOptions(collapsed = FALSE))
-  
-  return(map)
-}
-
 rq4_area_nuts3_with_geometry <- st_as_sf(rq4_area_nuts3_with_geometry)
 
 
-map <- rq4_choropleth_map(rq4_area_nuts3_with_geometry, "viridis")
+subdata <- c("All", "Vaccinated", "Unvaccinated")
+
+map <- choropleth_map(rq4_area_nuts3_with_geometry, 
+                              "viridis", 
+                              "cohort",
+                              subdata, 
+                              "subgroup", 
+                              "COVID-19 Hospitalisation rate", 
+                              "Hospitalisation (%)")
 map
 
 
@@ -6869,8 +6060,9 @@ expanded_df <- rq4_area_nuts3 %>%
 rq4_area_nuts3 <- expanded_df %>%
   left_join(rq4_area_nuts3, join_by("NUTS_ID", "NUTS_NAME", "cohort"))
 
-rq4_area_nuts3 <- rq4_area_nuts3 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_area_nuts3 <- rq4_area_nuts3 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "NUTS3",
                    NUTS_NAME = "Name", 
@@ -6924,8 +6116,9 @@ expanded_df <- rq4_area_lau2 %>%
 rq4_area_lau2 <- expanded_df %>%
   left_join(rq4_area_lau2, join_by("NUTS_ID", "NUTS_NAME", "cohort"))
 
-rq4_area_lau2 <- rq4_area_lau2 %>% mutate(n = ifelse(is.na(n), "Excluded", n))
-
+rq4_area_lau2 <- rq4_area_lau2 %>%
+  mutate(n = as.character(n)) %>%
+  mutate(n = ifelse(is.na(n), "Excluded", n))
 
 new_col_names <- c(NUTS_ID = "LAU2",
                    NUTS_NAME = "Name", 
