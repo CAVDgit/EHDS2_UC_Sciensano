@@ -28,6 +28,9 @@ library(DT)
 #| warning: false
 #| error: false
 
+# version date: 24-06-24
+script_version <- "1.1"
+
 ###################################################
 ########## Enter the file name to analyse #########
 ###################################################
@@ -82,6 +85,7 @@ dt_ind <- as.data.frame(introduce(df))
 
 ```
 
+Report version: **v`r script_version`**
 
 ## Overview
 
@@ -226,23 +230,6 @@ tryCatch(
 
 
 ```
-
-<!-- ```{r} -->
-<!-- #| echo: false -->
-<!-- #| warning: false -->
-<!-- #| error: false -->
-
-<!-- tryCatch( -->
-<!--   { -->
-<!--     pl -->
-<!--   }, -->
-<!--   error=function(cond) { -->
-<!--     ## Log info -->
-<!--     warning(paste0("MY ERROR:\n", cond)) -->
-<!--     return(stop(cond)) -->
-<!--   }) -->
-
-<!-- ``` -->
 
 ### Alerts
 
@@ -551,10 +538,11 @@ validation <- function(data) {
     is.na(dose_3_dt) | (!is.na(dose_3_dt) & !is.na(dose_3_brand_cd) &
                         !is.na(dose_2_dt) & !is.na(dose_2_brand_cd) &
                         !is.na(dose_1_dt) & !is.na(dose_1_brand_cd)),
-    (dose_1_brand_cd=="JJ" & !is.na(dose_1_dt) & !is.na(dose_2_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
-      (dose_1_brand_cd!="JJ" & !is.na(dose_2_dt) & !is.na(dose_3_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
+    (dose_1_brand_cd == "JJ" & !is.na(dose_1_dt) & !is.na(dose_2_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
+      (dose_1_brand_cd != "JJ" & !is.na(dose_2_dt) & !is.na(dose_3_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
       (is.na(dose_1_brand_cd) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE) |
-      (dose_1_brand_cd!="JJ" & is.na(dose_3_dt) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE)
+      (dose_1_brand_cd = "JJ" & is.na(dose_2_dt) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE) |
+      (dose_1_brand_cd != "JJ" & is.na(dose_3_dt) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE)
   )
   
   ## confront the data with the validation rules
@@ -664,17 +652,6 @@ tryCatch(
 
 ```
 
-<!-- ```{r} -->
-<!-- #| echo: false -->
-<!-- #| warning: false -->
-<!-- #| error: false -->
-
-<!-- tryCatch( -->
-<!--   { -->
-<!--     ply -->
-<!--   }) -->
-
-<!-- ``` -->
 :::
 
 
