@@ -554,7 +554,7 @@ validation <- function(data) {
     (dose_1_brand_cd=="JJ" & !is.na(dose_1_dt) & !is.na(dose_2_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
       (dose_1_brand_cd!="JJ" & !is.na(dose_2_dt) & !is.na(dose_3_dt) & !is.na(fully_vaccinated_dt) & fully_vaccinated_bl==TRUE) | 
       (is.na(dose_1_brand_cd) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE) |
-      (dose_1_brand_cd!="JJ" & is.na(dose_2_dt) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE)
+      (dose_1_brand_cd!="JJ" & is.na(dose_3_dt) & is.na(fully_vaccinated_dt) & fully_vaccinated_bl==FALSE)
   )
   
   ## confront the data with the validation rules
