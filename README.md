@@ -92,7 +92,7 @@ Part1:
      - Set the node country (default: country <- 'BE'). Possible value : BE, FR, FI, HU, HR, DK.
      - (optional) Adapt the cut-off/threshold to exclude aggregated data with a number of individuals lower than this threshold (default: threshold <- 10).
      - Execute the script to generate the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```) that can be exported outside the secure processing environment.
-
+    
 Part2:
   1. Place in the same folder : the aggregated data (```EHDS2_pilot_UC1_data_BE.csv```), the node report script ```EHDS2_pilot_UC_3_final_report.qmd``` and the shape files ```EHDS2_pilot_UC1_nuts_code.shp```, ```EHDS2_pilot_UC1_nuts_code.dbf```, ```EHDS2_pilot_UC1_nuts_code.prj```, ```EHDS2_pilot_UC1_nuts_code.shx```.
   2. Open the script using RStudio and set the working directory to the actual location of the script.
@@ -108,3 +108,20 @@ A quality report based on the mockup data is available for download as example.
 
 ##### Mockup final report ```EHDS2_pilot_UC_3_mockup_final_report.html```
 A final report based on the mockup data is available for download as example.
+
+    
+#### Privacy Measures in Data Processing
+The script incorporates several privacy measures to ensure that sensitive data is protected and anonymized:
+
+Privacy-Rounded Totals : The total number of individuals (individuals_nm) and the counts for vaccinated and non-vaccinated individuals are rounded up, with further adjustments to ensure that this rounding always results in a change of at least a specified threshold of individuals. This rounding prevents exact back-calculation of individual counts, protecting against re-identification risks.
+
+Threshold-Based Exclusion: Any aggregated data group with fewer than a specified threshold of individuals is excluded from the final output. These groups are marked with n = -1, and any associated statistics, such as median or quartiles, are not calculated, thus preventing the identification of small subgroups.
+
+Threshold-Median and Threshold-Quartile Functions: The script includes custom functions, threshold_median and threshold_quartile, which only compute median and quartile values if they are based on a sufficient number of individuals (meeting the specified threshold). If the count of individuals supporting these statistics is below the threshold, the function returns NA, ensuring that potentially sensitive statistical information is not disclosed for small groups.
+
+Aggregation of Data : The script only outputs aggregated data rather than individual-level data, reducing the risk of exposing sensitive information. Statistical summaries are produced for broader categories such as age, education, and income levels, with any group-level statistics suppressed if they do not meet the threshold criteria.
+
+These measures collectively ensure that the processed data retains its utility for analysis while significantly reducing the risk of identifying individuals, thereby aligning with best practices for data anonymization and privacy protection.
+
+
+
