@@ -1,7 +1,7 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.3" 
-# date of version : 17-06-24
+# script_version <- "1.4" 
+# date of version : 09-08-24
 
 library(tidyverse)
 library(DT)
@@ -109,6 +109,28 @@ columns_to_aggregate <- c("age_cd",
                           "residence_area_cd",
                           "residence_area_lau_cd")
 
+# Function to remove a statistic if it based on a low number of individuals
+threshold_median <- function(x, threshold) {
+  med <- median(x)
+  if (sum(x == med) < threshold) {
+    print(paste(sum(x == med)))
+    return(NA)
+  } else {
+    return(med)
+  }
+}
+
+threshold_quartile <- function(x, prob, threshold) {
+  q <- quantile(x, prob)
+  if (sum(x == q) < threshold) {
+    print(paste(sum(x == q)))
+    return(NA)
+  } else {
+    return(q)
+  }
+}
+
+
 # Count number of individuals
 individuals_nm <- count(df_clean)
 individuals_nm <- individuals_nm[1, 1, drop = TRUE]
@@ -118,11 +140,68 @@ individuals_vaccinated_nm <- individuals_vaccinated_nm[1, 1, drop = TRUE]
 individuals_not_vaccinated_nm <- count(filter(df_clean, fully_vaccinated_bl == FALSE))
 individuals_not_vaccinated_nm <- individuals_not_vaccinated_nm[1, 1, drop = TRUE]
 
+# Function to round individuals_nm for privacy and redistribute the added value
+# Ensuring at least threshold number individuals are added to either group
+round_for_privacy <- function(individuals_nm, individuals_vaccinated_nm, individuals_not_vaccinated_nm) {
+  
+  # Calculate the initial ratios based on individuals_nm
+  ratio_vaccinated <- individuals_vaccinated_nm / individuals_nm
+  ratio_not_vaccinated <- individuals_not_vaccinated_nm / individuals_nm
+  
+  # Round individuals_nm to the nearest centaine
+  rounded_individuals_nm <- ceiling(individuals_nm / 100) * 100
+  
+  # Check the difference
+  difference <- rounded_individuals_nm - individuals_nm
+  
+  # If the difference is less than threshold number, increase to the next hundred
+  if (difference < threshold) {
+    rounded_individuals_nm <- rounded_individuals_nm + 100
+    difference <- rounded_individuals_nm - individuals_nm
+  }
+  
+  # Redistribute the added value according to the initial ratios
+  added_to_vaccinated <- round(difference * ratio_vaccinated)
+  added_to_not_vaccinated <- difference - added_to_vaccinated  # Ensures total added equals difference
+  
+  # Ensure at least 10 individuals are added to either group
+  if (added_to_vaccinated < threshold) {
+    added_to_vaccinated <- threshold
+    added_to_not_vaccinated <- difference - added_to_vaccinated
+  } else if (added_to_not_vaccinated < threshold) {
+    added_to_not_vaccinated <- threshold
+    added_to_vaccinated <- difference - added_to_not_vaccinated
+  }
+  
+  # Adjust the individual counts
+  individuals_vaccinated_nm <- individuals_vaccinated_nm + added_to_vaccinated
+  individuals_not_vaccinated_nm <- individuals_not_vaccinated_nm + added_to_not_vaccinated
+  
+  return(list(
+    rounded_individuals_nm = rounded_individuals_nm,
+    individuals_vaccinated_nm = individuals_vaccinated_nm,
+    individuals_not_vaccinated_nm = individuals_not_vaccinated_nm
+  ))
+}
+
+result <- round_for_privacy(individuals_nm, individuals_vaccinated_nm, individuals_not_vaccinated_nm)
+
+# Print the results
+cat("Original individuals_nm:", individuals_nm, "\n")
+cat("Original individuals_vaccinated_nm:", individuals_vaccinated_nm, "\n")
+cat("Original individuals_not_vaccinated_nm:", individuals_not_vaccinated_nm, "\n")
+
+# Print the results
+cat("Rounded individuals_nm:", result$rounded_individuals_nm, "\n")
+cat("Adjusted individuals_vaccinated_nm:", result$individuals_vaccinated_nm, "\n")
+cat("Adjusted individuals_not_vaccinated_nm:", result$individuals_not_vaccinated_nm, "\n")
+
+
 rq <- data.frame(
   RQ = "dataset_info",
-  n = individuals_nm,
-  range1 = individuals_vaccinated_nm,
-  range2 = individuals_not_vaccinated_nm,
+  n = result$rounded_individuals_nm,
+  range1 = result$individuals_vaccinated_nm,
+  range2 = result$individuals_not_vaccinated_nm,
   range3 = threshold
   
 )
@@ -175,10 +254,10 @@ rq1_summary <- df_clean %>%
            income_category_cd, 
            household_type_cd, 
            migration_background_cd) %>% 
-  summarize(q1 = quantile(test_nm, 0.25),
-            median = median(test_nm),
+  summarize(q1 = threshold_quartile(test_nm, 0.25, threshold),
+            median = threshold_median(test_nm, threshold),
             mean = mean(test_nm),
-            q3 = quantile(test_nm, 0.75),
+            q3 = threshold_quartile(test_nm, 0.75, threshold),
             sd = sd(test_nm),
             n = n()) %>%
   mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
@@ -201,10 +280,10 @@ for (col in columns_to_aggregate) {
   stats_df <- df_clean %>%
     filter(!is.na(get(col)), !is.na(test_nm)) %>%
     group_by_at(vars(col)) %>%
-    summarize(q1 = quantile(test_nm, 0.25),
-              median = median(test_nm),
+    summarize(q1 = threshold_quartile(test_nm, 0.25, threshold),
+              median = threshold_median(test_nm, threshold),
               mean = mean(test_nm),
-              q3 = quantile(test_nm, 0.75),
+              q3 = threshold_quartile(test_nm, 0.75, threshold),
               sd = sd(test_nm),
               n = n()) %>%
     mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
@@ -217,9 +296,8 @@ for (col in columns_to_aggregate) {
            sd = ifelse(n == -1, NA, sd),
            lowerfence = ifelse(n == -1, NA, lowerfence),
            upperfence = ifelse(n == -1, NA, upperfence))
-
-  stats_df$RQ <- paste0("rq1_", col)
   
+  stats_df$RQ <- paste0("rq1_", col)
   
   rq <- bind_rows(rq, stats_df)
 }
@@ -243,6 +321,7 @@ for (col in columns_to_aggregate) {
            range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
   stats_df$RQ <- paste0("rq1_", col, "_test")
 
+  
   rq <- bind_rows(rq, stats_df)
 }
 
@@ -259,10 +338,10 @@ rq2_summary <- df_clean %>%
            income_category_cd, 
            household_type_cd, 
            migration_background_cd) %>% 
-  summarize(q1 = quantile(test_positive_to_covid_nm, 0.25),
-            median = median(test_positive_to_covid_nm),
+  summarize(q1 = threshold_quartile(test_positive_to_covid_nm, 0.25, threshold),
+            median = threshold_median(test_positive_to_covid_nm, threshold),
             mean = mean(test_positive_to_covid_nm),
-            q3 = quantile(test_positive_to_covid_nm, 0.75),
+            q3 = threshold_quartile(test_positive_to_covid_nm, 0.75, threshold),
             sd = sd(test_positive_to_covid_nm),
             n = n()) %>% 
   mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
@@ -286,10 +365,10 @@ for (col in columns_to_aggregate) {
     filter(!is.na(get(col)), 
            !is.na(test_positive_to_covid_nm)) %>%
     group_by_at(vars(col)) %>%
-    summarize(q1 = quantile(test_positive_to_covid_nm, 0.25),
-              median = median(test_positive_to_covid_nm),
+    summarize(q1 = threshold_quartile(test_positive_to_covid_nm, 0.25, threshold),
+              median = threshold_median(test_positive_to_covid_nm, threshold),
               mean = mean(test_positive_to_covid_nm),
-              q3 = quantile(test_positive_to_covid_nm, 0.75),
+              q3 = threshold_quartile(test_positive_to_covid_nm, 0.75, threshold),
               sd = sd(test_positive_to_covid_nm),
               n = n()) %>%
     mutate(lowerfence = pmax(0, q1 - 1.5 * (q3 - q1)),
@@ -488,3 +567,15 @@ write.table(aggregated_data,
 #                       sep =" ", 
 #                       fileEncoding = "UTF-8", 
 #                       na = "NA")
+
+
+
+
+
+
+
+
+
+
+
+
