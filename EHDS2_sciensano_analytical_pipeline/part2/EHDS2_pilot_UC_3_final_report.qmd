@@ -43,8 +43,8 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 
 ##### Script ######
-# version date: 19-06-24
-script_version <- "1.1"
+# version date: 08-10-24
+script_version <- "1.2"
 
 library(tidyverse)
 library(ggplot2)
@@ -197,7 +197,7 @@ barplot_custom <- function(data,
                         type = "category",
                         categoryorder = "array",
                         categoryarray = x_axis_order),
-           yaxis = list(title = y_label, titlefont = y_label_font, tickformat = ',.0%'),
+           yaxis = list(title = y_label, titlefont = y_label_font, tickformat = ",.0%", hoverformat = ".2%"),
            legend = list(title = list(text = legend_title), font = legend_font, orientation = legend_position),
            hovermode = 'closest')
 
@@ -241,7 +241,7 @@ barplot_stacked_custom_q4 <- function(data,
                         type = "category",
                         categoryorder = "array",
                         categoryarray = x_axis_order),
-           yaxis = list(title = y_label, titlefont = y_label_font, tickformat = ',.0%'),
+           yaxis = list(title = y_label, titlefont = y_label_font, tickformat = ",.0%", hoverformat = ".2%"),
            barmode = barmode, # Apply barmode setting
            legend = list(title = list(text = legend_title), font = legend_font, orientation = legend_position),
            hovermode = 'closest')
@@ -1803,7 +1803,7 @@ plot_ly() %>%
            marker = list(color = 'rgba(0,255,0,0.6)')) %>%
   layout(title = "COVID-19 PCR tests distribution accross the cohort population",
          xaxis = list(title = "COVID-19 PCR Tests"),
-         yaxis = list(title = "Percentage", tickformat = ',.0%'),  # This will format the hover text as percentages
+         yaxis = list(title = "Percentage", tickformat = ",.0%", hoverformat = ".2%"),
          barmode = 'group')
 
 ```
@@ -3267,9 +3267,8 @@ plot_ly() %>%
   add_bars(data = rq3_general , x = ~fully_vaccinated_bl, y = ~ratio, name = "Vaccination status", marker = list(color = 'rgba(0,0,255,0.6)')) %>%
   layout(title = "COVID-19 vaccination rate in the whole cohort",
          xaxis = list(title = "Vaccination status", tickmode = "linear", dtick = 1),
-         yaxis = list(title = "Percentage", tickformat = ',.0%'),
+         yaxis = list(title = "Percentage", tickformat = ",.0%", hoverformat = ".2%"),
          barmode = 'overlay')
-
 ```
 
 ### Doses distribution
@@ -3289,7 +3288,7 @@ plot_ly() %>%
   add_bars(data = rq3_distribution , x = ~dose_number, y = ~ratio, name = "Total Doses", marker = list(color = 'rgba(0,0,255,0.6)')) %>%
   layout(title = "Distribution of COVID-19 vaccine doses received per individual",
          xaxis = list(title = "Number of Vaccine doses", tickmode = "linear", dtick = 1),
-         yaxis = list(title = "Percentage", tickformat = ',.0%'),
+         yaxis = list(title = "Percentage", tickformat = ",.0%", hoverformat = ".2%"),
          barmode = 'overlay')
 
 ```
@@ -3912,7 +3911,7 @@ new_col_names <- c(household_type_cd = "Household type",
 
 rq3_household_doses_table <- setNames(rq3_household_doses[, names(new_col_names)], new_col_names)
 
-datatable(rq3_migration_doses_table,
+datatable(rq3_household_doses_table,
           filter = "top",
           options = list(pageLength = 8, class = 'row-border stripe hover compact'),
           rownames = FALSE,
@@ -4798,7 +4797,7 @@ plot_ly() %>%
   add_bars(data = rq4_general , x = ~hospi_due_to_covid_bl, y = ~ratio, name = "Hospitalisation status", marker = list(color = 'rgba(0,0,255,0.6)')) %>%
   layout(title = "COVID-19 hospitalisation in the whole cohort",
          xaxis = list(title = "COVID-19 Hospitalisation", tickmode = "linear", dtick = 1),
-         yaxis = list(title = "Percentage", tickformat = ',.0%'),
+         yaxis = list(title = "Percentage", tickformat = ",.0%", hoverformat = ".2%"),
          barmode = 'overlay')
 
 ```
@@ -4817,7 +4816,7 @@ plot_ly() %>%
   add_bars(data = rq4_general2 , x = ~hospi_due_to_covid_bl, y = ~ratio, name = "Hospitalisation status", marker = list(color = 'rgba(0,0,255,0.6)')) %>%
   layout(title = "COVID-19 hospitalisation in vaccinated cohort",
          xaxis = list(title = "COVID-19 Hospitalisation", tickmode = "linear", dtick = 1),
-         yaxis = list(title = "Percentage", tickformat = ',.0%'),
+         yaxis = list(title = "Percentage", tickformat = ",.0%", hoverformat = ".2%"),
          barmode = 'overlay')
 
 ```
