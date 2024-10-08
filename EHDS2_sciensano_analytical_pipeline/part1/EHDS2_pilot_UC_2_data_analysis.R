@@ -315,13 +315,17 @@ for (col in columns_to_aggregate) {
               range2 = sum(range2),
               range3 = sum(range3),
               n = n()) %>%
-    mutate(n = ifelse(n > 0 & n < threshold, -1, n),
-           range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
-           range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
-           range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
+    mutate(
+      range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
+      range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
+      range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3),
+      n = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, ifelse(n > 0 & n < threshold, -1, n)),
+      range1 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range1),
+      range2 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range2),
+      range3 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range3)
+    )
   stats_df$RQ <- paste0("rq1_", col, "_test")
 
-  
   rq <- bind_rows(rq, stats_df)
 }
 
@@ -399,10 +403,15 @@ for (col in columns_to_aggregate) {
               range2 = sum(range2),
               range3 = sum(range3),
               n = n()) %>%
-    mutate(n = ifelse(n > 0 & n < threshold, -1, n),
-           range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
-           range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
-           range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
+    mutate(
+      range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
+      range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
+      range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3),
+      n = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, ifelse(n > 0 & n < threshold, -1, n)),
+      range1 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range1),
+      range2 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range2),
+      range3 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range3)
+    )
   stats_df$RQ <- paste0("rq2_", col, "_positive_test")
   
   rq <- bind_rows(rq, stats_df)
@@ -482,10 +491,15 @@ for (col in columns_to_aggregate) {
               range2 = sum(range2),
               range3 = sum(range3),
               n = n()) %>%
-    mutate(n = ifelse(n > 0 & n < threshold, -1, n),
-           range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
-           range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
-           range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3))
+    mutate(
+      range1 = ifelse(range1 > 0 & range1 < threshold, -1, range1),
+      range2 = ifelse(range2 > 0 & range2 < threshold, -1, range2),
+      range3 = ifelse(range3 > 0 & range3 < threshold, -1, range3),
+      n = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, ifelse(n > 0 & n < threshold, -1, n)),
+      range1 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range1),
+      range2 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range2),
+      range3 = ifelse(range1 == -1 | range2 == -1 | range3 == -1, -1, range3)
+    )
   stats_df$RQ <- paste0("rq3_", col, "_doses")
   
   rq <- bind_rows(rq, stats_df)
@@ -567,15 +581,4 @@ write.table(aggregated_data,
 #                       sep =" ", 
 #                       fileEncoding = "UTF-8", 
 #                       na = "NA")
-
-
-
-
-
-
-
-
-
-
-
 
