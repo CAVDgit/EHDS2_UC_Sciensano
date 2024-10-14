@@ -43,8 +43,8 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 
 ##### Script ######
-# version date: 08-10-24
-script_version <- "1.2"
+# version date: 14-10-24
+script_version <- "1.3"
 
 library(tidyverse)
 library(ggplot2)
@@ -298,12 +298,13 @@ barplot_grouped_custom1 <- function(data1, x_var1, y_var1,
 
 
 choropleth_map <- function(dataRQ, 
-                            color, 
-                            groupBy,
-                            subdata, 
-                            variable,
-                            title, 
-                            legend) {
+                           color, 
+                           groupBy,
+                           subdata, 
+                           variable,
+                           title, 
+                           legend, 
+                           is_percentage = TRUE) {  # Add the new argument
   
   # Filter out NA and Inf values to determine the valid range for the color palette
   valid_values <- dataRQ[[variable]][!is.na(dataRQ[[variable]]) & !is.infinite(dataRQ[[variable]])]
@@ -317,6 +318,7 @@ choropleth_map <- function(dataRQ,
   
   map <- leaflet(dataRQ) %>%
     addProviderTiles(providers$CartoDB.Positron)
+  
   if (is.null(subdata) || length(subdata) == 0) {
     map <- map %>%
       addPolygons(data = dataRQ, 
@@ -332,7 +334,10 @@ choropleth_map <- function(dataRQ,
                     "ID: ", NUTS_ID, "<br/>",
                     "Name:<span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
                     "n: ", n, "<br/>",
-                    title, ":<span style='color: black; font-weight: bold;'>", round(get(variable), 2), "%</span><br/>",
+                    title, ":<span style='color: black; font-weight: bold;'>", 
+                    round(get(variable), 2), 
+                    ifelse(is_percentage, "%", ""),  # Conditional suffix
+                    "</span><br/>",
                     "</div>"
                   ) %>% lapply(htmltools::HTML))
     
@@ -353,30 +358,37 @@ choropleth_map <- function(dataRQ,
                       "ID: ", NUTS_ID, "<br/>",
                       "Name: <span style='color: green; font-weight: bold;'>", NUTS_NAME, "</span><br/>",
                       "n: ", n, "<br/>",
-                      group, ":<span style='color: black; font-weight: bold;'>", round(get(variable), 2), "%</span><br/>",
+                      group, ":<span style='color: black; font-weight: bold;'>", 
+                      round(get(variable), 2), 
+                      ifelse(is_percentage, "%", ""),  # Conditional suffix
+                      "</span><br/>",
                       "</div>"
                     ) %>% lapply(htmltools::HTML),
                     group = group)
     }
   }
+  
+  # Add legend with conditional suffix
   map <- map %>%
     addLegend(
       position = "bottomright",
       pal = custom_palette,
       values = ~dataRQ[[variable]][!is.na(dataRQ[[variable]])],
       title = legend,
-      labFormat = labelFormat(suffix = "%"),
+      labFormat = labelFormat(suffix = ifelse(is_percentage, "%", "")),  # Conditional label format for suffix
       opacity = 1
     )
+  
+  # Add layers control if groupBy is provided
   if (!is.null(groupBy)) {
     map <- map %>%
       addLayersControl(baseGroups = subdata,
                        options = layersControlOptions(collapsed = FALSE))
   }
-
   
   return(map)
 }
+
 
 # Extract cohort info
 dataset_info <- df %>% filter(RQ == "dataset_info") %>% select(n, range1, range2, range3)
@@ -2746,7 +2758,8 @@ map <- choropleth_map(rq1_2_area_nuts2_with_geometry,
                            subdata, 
                            "mean", 
                            "PCR Test Results", 
-                           "Distribution (%)")
+                           "Distribution",
+                           is_percentage = FALSE)
 map
 
 
@@ -2966,7 +2979,8 @@ map <- choropleth_map(rq1_2_area_nuts3_with_geometry,
                            subdata, 
                            "mean", 
                            "PCR Test Results", 
-                           "Distribution (%)")
+                           "Distribution",
+                           is_percentage = FALSE)
 map
 
 
