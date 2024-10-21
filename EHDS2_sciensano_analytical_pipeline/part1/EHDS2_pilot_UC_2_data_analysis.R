@@ -1,6 +1,6 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.6" 
+# script_version <- "1.7" 
 # date of version : 24-10-24
 
 library(tidyverse)
@@ -562,15 +562,35 @@ rq <- rq %>% mutate(country = as.factor(country))
 total_summary <- df_clean %>%
   summarise(
     count = result$rounded_individuals_nm,
+    
+    # Age statistics
     avg_age = round(mean(age_nm, na.rm = TRUE), 2),
+    median_age = round(median(age_nm, na.rm = TRUE), 2),
+    sd_age = round(sd(age_nm, na.rm = TRUE), 2),  # Standard Deviation for Age
+    iqr_age = paste0(round(quantile(age_nm, 0.25, na.rm = TRUE), 2), "-", 
+                     round(quantile(age_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Age
+    
+    # Test statistics
     individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
     avg_test_nm = round(mean(test_nm, na.rm = TRUE), 2),
+    median_test_nm = round(median(test_nm, na.rm = TRUE), 2),
+    sd_test_nm = round(sd(test_nm, na.rm = TRUE), 2),  # Standard Deviation for Tests
+    iqr_test_nm = paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
+                         round(quantile(test_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Tests
+    
+    # Vaccine statistics
     individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
     avg_dose_nm = round(mean(doses_nm, na.rm = TRUE), 2),
-    fully_vaccinated_count = result$individuals_vaccinated_nm,
-    vaccination_rate = round(fully_vaccinated_count/count*100, 2),
+    median_dose_nm = round(median(doses_nm, na.rm = TRUE), 2),
+    sd_dose_nm = round(sd(doses_nm, na.rm = TRUE), 2),  # Standard Deviation for Doses
+    iqr_dose_nm = paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
+                         round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Doses
+    
+    # Vaccination and hospitalization rates
+    fully_vaccinated_count = sum(fully_vaccinated_bl == TRUE, na.rm = TRUE),
+    vaccination_rate = round(fully_vaccinated_count / count * 100, 2),
     hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
-    hospitalisation_rate = round(hospitalised_true/count*100, 2)
+    hospitalisation_rate = round(hospitalised_true / count * 100, 2)
   )
 
 # Collapse the entire row into a single string with ";" separating the values
@@ -601,16 +621,37 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
   group_summary <- filtered_df %>%
     summarise(
       count = count_value,
+      
+      # Age statistics
       avg_age = round(mean(age_nm, na.rm = TRUE), 2),
+      median_age = round(median(age_nm, na.rm = TRUE), 2),
+      sd_age = round(sd(age_nm, na.rm = TRUE), 2),  # Standard Deviation for Age
+      iqr_age = paste0(round(quantile(age_nm, 0.25, na.rm = TRUE), 2), "-", 
+                       round(quantile(age_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Age
+      
+      # Test statistics
       individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
       avg_test_nm = round(mean(test_nm, na.rm = TRUE), 2),
+      median_test_nm = round(median(test_nm, na.rm = TRUE), 2),
+      sd_test_nm = round(sd(test_nm, na.rm = TRUE), 2),  # Standard Deviation for Tests
+      iqr_test_nm = paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
+                           round(quantile(test_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Tests
+      
+      # Vaccine statistics
       individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
       avg_dose_nm = round(mean(doses_nm, na.rm = TRUE), 2),
+      median_dose_nm = round(median(doses_nm, na.rm = TRUE), 2),
+      sd_dose_nm = round(sd(doses_nm, na.rm = TRUE), 2),  # Standard Deviation for Doses
+      iqr_dose_nm = paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
+                           round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Doses
+      
+      # Vaccination and hospitalization rates
       fully_vaccinated_count = sum(fully_vaccinated_bl == TRUE, na.rm = TRUE),
-      vaccination_rate = round(fully_vaccinated_count/count*100, 2),
+      vaccination_rate = round(fully_vaccinated_count / count * 100, 2),
       hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
-      hospitalisation_rate = round(hospitalised_true/count*100, 2)
+      hospitalisation_rate = round(hospitalised_true / count * 100, 2)
     )
+  
   
   # Collapse the entire row into a single string with ";" separating the values
   group_summary_collapsed <- paste(group_summary, collapse = ";")
