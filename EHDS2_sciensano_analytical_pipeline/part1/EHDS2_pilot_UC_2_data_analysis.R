@@ -597,7 +597,7 @@ total_summary <- df_clean %>%
     
     # Hospitalisation rate (set -1 if hospitalised_true < threshold)
     hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
-    hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 2), -1),
+    hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 3), -1),
     hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
 
   )
@@ -665,7 +665,7 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
       
       # Hospitalisation rate (set -1 if hospitalised_true < threshold)
       hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
-      hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 2), -1),
+      hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 3), -1),
       hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
     )
   
