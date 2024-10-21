@@ -1,6 +1,6 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.8" 
+# script_version <- "1.9" 
 # date of version : 24-10-24
 
 library(tidyverse)
@@ -579,6 +579,8 @@ total_summary <- df_clean %>%
     iqr_test_nm = ifelse(individuals_with_tests >= threshold, 
                          paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
                                 round(quantile(test_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
+    individuals_with_tests = ifelse(individuals_with_tests >= threshold, individuals_with_tests, -1),
+    
     
     # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
     individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
@@ -588,6 +590,8 @@ total_summary <- df_clean %>%
     iqr_dose_nm = ifelse(individuals_with_vaccine >= threshold, 
                          paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
                                 round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Doses
+    individuals_with_vaccine = ifelse(individuals_with_vaccine >= threshold, individuals_with_vaccine, -1),
+    
     
     # Vaccination rate (set -1 if fully_vaccinated_count < threshold)
     fully_vaccinated_count = result$individuals_vaccinated_nm,
@@ -647,6 +651,8 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
       iqr_test_nm = ifelse(individuals_with_tests >= threshold, 
                            paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
                                   round(quantile(test_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
+      individuals_with_tests = ifelse(individuals_with_tests >= threshold, individuals_with_tests, -1),
+      
       
       # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
       individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
@@ -656,6 +662,8 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
       iqr_dose_nm = ifelse(individuals_with_vaccine >= threshold, 
                            paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
                                   round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Doses
+      individuals_with_vaccine = ifelse(individuals_with_vaccine >= threshold, individuals_with_vaccine, -1),
+      
       
       # Vaccination rate (set -1 if fully_vaccinated_count < threshold)
       fully_vaccinated_count = sum(fully_vaccinated_bl == TRUE, na.rm = TRUE),
