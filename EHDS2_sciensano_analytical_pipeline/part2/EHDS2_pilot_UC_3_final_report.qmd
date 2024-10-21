@@ -43,8 +43,8 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 
 ##### Script ######
-# version date: 14-10-24
-script_version <- "1.3"
+# version date: 21-10-24
+script_version <- "1.4"
 
 library(tidyverse)
 library(ggplot2)
@@ -110,6 +110,16 @@ nuts_shape <- st_read(shapefile_path)
 
 nuts_shape <- nuts_shape %>% filter(CNTR_CODE == country)
 
+if (country == 'BE') {
+nuts_shape <- nuts_shape %>%
+  mutate(NUTS_NAME = ifelse(NUTS_NAME == 'Région de Bruxelles-Capitale/ Brussels Hoofdstedelijk Gewest',
+                            'Région de Bruxelles-Capitale', 
+                            NUTS_NAME),
+         NUTS_NAME = ifelse(NUTS_NAME == 'Arr. de Bruxelles-Capitale/Arr. Brussel-Hoofdstad',
+                            'Arr. de Bruxelles-Capitale', 
+                            NUTS_NAME))
+}
+
 # get tresholded data
 # retrieve excluded groups
 df_excluded <- df %>% 
@@ -136,6 +146,50 @@ plotOrderHousehold <- c("ALONE", "COUPLE", "COUPLE_CHILD", "LONE", "EXTENDED", "
 plotOrderAge <- c("18-25", "25-35", "35-45", "45-55", "55-65", "65-75", "75-85", "85-95", "95-105", "105-115")
 plotOrderSex <- c("F", "M")
 # template for graphs
+
+
+barplot_general_metrics <- function(data,
+                            y_var,
+                            plot_title = "Dynamic Analysis by Group",
+                            x_label = "Group",
+                            y_label = NULL,  # Dynamic based on selected Y-axis
+                            plot_title_font = list(family = "Arial", size = 16, color = "#333333"),
+                            x_label_font = list(family = "Arial", size = 16, color = "#333333"),
+                            y_label_font = list(family = "Arial", size = 16, color = "#333333"),
+                            legend_title = NULL,
+                            legend_font = list(family = "Arial", size = 16, color = "#333333"),
+                            legend_position = "bottom",
+                            x_axis_order = NULL) {
+  
+  # Set dynamic y_label based on the selected Y-axis
+  if (is.null(y_label)) {
+    y_label <- y_var
+  }
+
+  # Create the plotly bar chart
+  plot <- plot_ly(data,
+                  type = 'bar',
+                  x = ~Group,  # Fixed X-axis to Group
+                  y = ~get(y_var),  # Dynamic Y-axis based on selected column
+                  mode = 'markers',
+                  text = ~Group,  # Tooltip showing group names
+                  hoverinfo = 'text+y') %>%
+    layout(
+      title = list(text = plot_title, font = plot_title_font),
+      xaxis = list(title = x_label,
+                   titlefont = x_label_font,
+                   type = "category",
+                   categoryorder = "array",
+                   categoryarray = x_axis_order),
+      yaxis = list(title = y_label, titlefont = y_label_font, tickformat = ",.0%", hoverformat = ".2f"),
+      legend = list(title = list(text = legend_title), font = legend_font, orientation = legend_position),
+      hovermode = 'closest'
+    )
+  
+  return(plot)
+}
+
+
 
 boxplot_custom_group <- function(data, 
                            x_var, 
@@ -405,6 +459,110 @@ date_from <- as.Date(dataset_info2[1, 3, drop = TRUE])
 date_to <- as.Date(dataset_info2[1, 4, drop = TRUE])
 
 
+# Glogal metrics calculation and formatting
+
+# Function to extract and append rows for any group summary based on RQ label
+extract_group_summary <- function(rq_df, rq_label, cohort_label) {
+  # Extract the row for the specific cohort
+  dataset_info_group_row <- rq_df %>%
+    filter(RQ == rq_label) %>%
+    pull(country)
+  
+  # Split the values by ";"
+  extracted_values_group <- unlist(strsplit(dataset_info_group_row, ";"))
+  
+  # Create a dataframe for the cohort
+  data.frame(
+    cohort = cohort_label,
+    count = extracted_values_group[1],
+    avg_age = extracted_values_group[2],
+    individuals_with_tests = extracted_values_group[3],
+    avg_test_nm = extracted_values_group[4],
+    individuals_with_vaccine = extracted_values_group[5],
+    avg_dose_nm = extracted_values_group[6],
+    fully_vaccinated_count = extracted_values_group[7],
+    vaccination_rate = extracted_values_group[8],
+    hospitalised_true = extracted_values_group[9],
+    hospitalisation_rate = extracted_values_group[10],
+    stringsAsFactors = FALSE
+  )
+}
+
+# Extract all rows from rq where RQ starts with 'dataset_info_'
+rq_labels <- df %>%
+  filter(grepl("^dataset_info_", RQ)) %>%
+  pull(RQ)
+
+# Create an empty list to store the results
+results_list <- list()
+
+# Loop through all the matching rq_labels and extract their values
+for (label in rq_labels) {
+  # Remove the "dataset_info_" prefix
+  cohort_label <- gsub("dataset_info_", "", label)
+  
+  # Check if the label starts with "age_cd_" and replace it with "Age group :"
+  if (grepl("^age_cd_", cohort_label)) {
+    cohort_label <- gsub("age_cd_", "Age: ", cohort_label)
+
+  } else if (grepl("^all", cohort_label)) {
+    cohort_label <- gsub("all", "Entire Cohort", cohort_label)
+    
+  # Check if the label starts with "sex_cd_" and replace with "Male" or "Female"
+  } else if (grepl("^sex_cd_", cohort_label)) {
+    cohort_label <- gsub("sex_cd_M", "Male", cohort_label)
+    cohort_label <- gsub("sex_cd_F", "Female", cohort_label)
+  
+  } else if (grepl("^education_level_cd_", cohort_label)) {
+    cohort_label <- gsub("education_level_cd_", "Education: ", cohort_label)
+
+  } else if (grepl("^income_category_cd_", cohort_label)) {
+    cohort_label <- gsub("income_category_cd_", "Income: ", cohort_label)
+
+  } else if (grepl("^migration_background_cd_", cohort_label)) {
+    cohort_label <- gsub("migration_background_cd_", "Migration: ", cohort_label)
+
+  } else if (grepl("^household_type_cd_", cohort_label)) {
+    cohort_label <- gsub("household_type_cd_", "Household: ", cohort_label)
+
+  } else if (grepl("^residence_area_nuts2_cd_", cohort_label)) {
+    nuts_code <- gsub("residence_area_nuts2_cd_", "", cohort_label)
+    
+    # Look up the NUTS name from rq1_2_area_nuts2 based on the nuts_code
+    nuts_name <- nuts_shape %>%
+      filter(NUTS_ID == nuts_code) %>%
+      pull(NUTS_NAME)
+    
+    # Replace with the actual name
+    cohort_label <- paste("Residence: ", nuts_name)
+    
+  }
+  
+  # Now use the adapted cohort_label
+  summary_df <- extract_group_summary(df, label, cohort_label)
+  results_list[[label]] <- summary_df  # Store the result in the list
+}
+
+# Combine all extracted dataframes into one
+global_metrics_df <- do.call(bind_rows, results_list)
+
+# Rename columns to make them more human-readable
+colnames(global_metrics_df) <- c(
+  "Group",               # cohort
+  "n",                   # count
+  "Avg Age",             # avg_age
+  "Tested",              # individuals_with_tests
+  "Avg Tests",           # avg_test_nm
+  "Vaccinated (1+ Dose)",# individuals_with_vaccine
+  "Avg Doses",           # avg_dose_nm
+  "Fully Vaccinated",    # fully_vaccinated_count
+  "Vaccination Rate (%)",# vaccination_rate
+  "COVID-19 Hospitalized",        # hospitalised_true
+  "Hospital Rate (%)"    # hospitalisation_rate
+)
+
+
+
 
 rq1_summary <- df %>% 
   filter(RQ == "rq1_summary" & 
@@ -481,7 +639,7 @@ rq1_2_age_group <- df %>%
   select(type, age_cd, var_stat) %>%
   group_by(age_cd, type)
 
-rq1_2_gender <- df %>%
+rq1_2_sex <- df %>%
   filter(RQ %in% c("rq1_sex_cd", "rq2_sex_cd") & sex_cd %in% c("M", "F") & 
            !is.na(sex_cd)) %>%
   mutate(type = ifelse(RQ == "rq1_sex_cd", 'All', 'Positives')) %>%
@@ -575,7 +733,7 @@ rq1_2_age_tests <- df %>%
   select(age_cd, type, tests, value, n, nGroup)
 
 
-rq1_2_gender_tests <- df %>% 
+rq1_2_sex_tests <- df %>% 
   filter(RQ %in% c("rq1_sex_cd_test", "rq2_sex_cd_positive_test") & 
            sex_cd %in% c("M", "F") & 
            !is.na(sex_cd)) %>%
@@ -776,8 +934,8 @@ rq3_age_aggreg <- rq3_age_aggreg %>%
 
 
 
-# rq3 gender
-rq3_gender_aggreg <- df %>%
+# rq3 sex
+rq3_sex_aggreg <- df %>%
   filter(RQ == "rq3_sex_cd") %>%
   group_by(sex_cd,
            fully_vaccinated_bl) %>% 
@@ -788,11 +946,11 @@ group <- df %>%
   group_by(sex_cd) %>% 
   summarise(nGroup = sum(n))
 
-rq3_gender_aggreg <- left_join(rq3_gender_aggreg, group)
+rq3_sex_aggreg <- left_join(rq3_sex_aggreg, group)
 
 rm(group)
 
-rq3_gender_aggreg <- rq3_gender_aggreg %>%
+rq3_sex_aggreg <- rq3_sex_aggreg %>%
   mutate(subgroup = n/nGroup,
          overall = n/individuals_nm)
 
@@ -929,7 +1087,7 @@ rq3_age_doses <- df %>%
   select(age_cd, doses, value, n, nGroup)
 
 
-rq3_gender_doses <- df %>% 
+rq3_sex_doses <- df %>% 
   filter(RQ == "rq3_sex_cd_doses" & sex_cd %in% c("M", "F") & !is.na(sex_cd)) %>% 
   select(sex_cd, range1, range2, range3, n) %>% 
   group_by(sex_cd) %>%
@@ -1376,8 +1534,8 @@ rm(rq4a_age_aggreg, rq4b_age_aggreg, rq4b_age_aggrega, rq4b_age_aggregb)
 
 
 
-### rq4 gender
-rq4_gender_aggreg <- df %>%
+### rq4 sex
+rq4_sex_aggreg <- df %>%
   filter(RQ == "rq4_sex_cd") %>%
   group_by(sex_cd,
            hospi_due_to_covid_bl,
@@ -1389,27 +1547,27 @@ group <- df %>%
   group_by(sex_cd) %>% 
   summarise(nGroup = sum(n))
 
-rq4_gender_aggreg <- left_join(rq4_gender_aggreg, group)
+rq4_sex_aggreg <- left_join(rq4_sex_aggreg, group)
 
 groupVacc <- df %>%
   filter(RQ == "rq4_sex_cd", fully_vaccinated_bl == TRUE) %>%
   group_by(sex_cd, fully_vaccinated_bl) %>% 
   summarise(nGroupVacc = sum(n)) 
 
-rq4_gender_aggreg <- left_join(rq4_gender_aggreg, groupVacc)
+rq4_sex_aggreg <- left_join(rq4_sex_aggreg, groupVacc)
 
 groupUnVacc <- df %>%
   filter(RQ == "rq4_sex_cd", fully_vaccinated_bl == FALSE) %>%
   group_by(sex_cd, fully_vaccinated_bl) %>% 
   summarise(nGroupUnVacc = sum(n))
 
-rq4_gender_aggreg <- rq4_gender_aggreg %>% 
+rq4_sex_aggreg <- rq4_sex_aggreg %>% 
   left_join(groupUnVacc) %>% distinct()
 
 rm(group, groupVacc, groupUnVacc)
 
 
-rq4_gender_aggreg <- rq4_gender_aggreg %>%
+rq4_sex_aggreg <- rq4_sex_aggreg %>%
   mutate(subgroup = n/nGroup,
          overall = n/individuals_nm,
          subgroupVacc = ifelse(fully_vaccinated_bl == TRUE, n/nGroupVacc, NA),
@@ -1417,16 +1575,16 @@ rq4_gender_aggreg <- rq4_gender_aggreg %>%
          overallVacc = ifelse(fully_vaccinated_bl == TRUE, n/individuals_vaccinated_nm, NA),
          overallUnVacc = ifelse(fully_vaccinated_bl == FALSE, n/individuals_not_vaccinated_nm, NA))
 
-rq4a_gender_aggreg <- rq4_gender_aggreg %>% 
+rq4a_sex_aggreg <- rq4_sex_aggreg %>% 
   select(sex_cd, hospi_due_to_covid_bl, n, overall, subgroup) %>%
   group_by(sex_cd, hospi_due_to_covid_bl) %>%
   summarize(across(everything(), ~ ifelse(all(is.na(.)), NA, sum(., na.rm = TRUE))), .groups = 'drop') %>%
   mutate(cohort = 'All')
 
-rq4b_gender_aggreg <- rq4_gender_aggreg %>% 
+rq4b_sex_aggreg <- rq4_sex_aggreg %>% 
   select(sex_cd, fully_vaccinated_bl, n, overallVacc, subgroupVacc, overallUnVacc, subgroupUnVacc)
 
-rq4b_gender_aggrega <- rq4b_gender_aggreg %>%
+rq4b_sex_aggrega <- rq4b_sex_aggreg %>%
   filter(fully_vaccinated_bl == TRUE) %>%
   select(sex_cd, n, overallVacc, subgroupVacc) %>%
   rename(
@@ -1434,7 +1592,7 @@ rq4b_gender_aggrega <- rq4b_gender_aggreg %>%
     subgroup = subgroupVacc) %>%
   mutate(cohort = 'Vaccinated')
 
-rq4b_gender_aggregb <- rq4b_gender_aggreg %>%
+rq4b_sex_aggregb <- rq4b_sex_aggreg %>%
   filter(fully_vaccinated_bl == FALSE) %>%
   select(sex_cd, n, overallUnVacc, subgroupUnVacc) %>%
   rename(
@@ -1442,9 +1600,9 @@ rq4b_gender_aggregb <- rq4b_gender_aggreg %>%
     subgroup = subgroupUnVacc) %>%
   mutate(cohort = 'Unvaccinated')
 
-rq4_gender_aggreg <- bind_rows(rq4a_gender_aggreg, rq4b_gender_aggrega, rq4b_gender_aggregb)
+rq4_sex_aggreg <- bind_rows(rq4a_sex_aggreg, rq4b_sex_aggrega, rq4b_sex_aggregb)
 
-rm(rq4a_gender_aggreg, rq4b_gender_aggreg, rq4b_gender_aggrega, rq4b_gender_aggregb)
+rm(rq4a_sex_aggreg, rq4b_sex_aggreg, rq4b_sex_aggrega, rq4b_sex_aggregb)
 
 
 
@@ -1745,7 +1903,7 @@ Report version: **v`r script_version`**
 ## Introduction
 
 The aim of this use case is **to determine the population uptake metrics for SARS-CoV-2 testing, SARS-CoV-2 vaccination, and hospitalisation due to an infection with SARS-CoV-2** in the adult population who have been tested at least once for COVID-19 and/or have been vaccinated. <br>
-Testing statistics, vaccination uptake and coverage, and hospitalisation will be assessed by age, gender, geographical region, target groups, and socioeconomic indicators.
+Testing statistics, vaccination uptake and coverage, and hospitalisation will be assessed by age, sex, geographical region, target groups, and socioeconomic indicators.
 
 The purpose of this use case is not only to answer the research questions but **also to test the feasibility of conducting such a study without the EHDS infrastructure** in place and then with the different services that will be developed by the **HealthData@EU pilot project**. These findings will factually present the benefits and added value of the HealthData@EU infrastructure.
 
@@ -1784,6 +1942,492 @@ The study population consists of all residents of a country tested and/or vaccin
   **Groups excluded**: `r groups_excluded` groups*.<br>
 
 *Excluded groups are represented by the value "Excluded" under the group size (N) in data tables.
+
+## Global Metrics
+
+::: panel-tabset
+
+### Education level
+
+
+```{r cohort information education}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Education:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Education: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# List of columns that can be chosen for the Y-axis
+y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+
+# Default plot using the first available column for the Y-axis
+plot_dynamic <- barplot_general_metrics(
+  data = filtered_general_table,
+  y_var = y_axis_choices[1],
+  plot_title = "Dynamic Barplot for Vaccination Rate",
+  x_label = "Education Level",
+  y_label = y_axis_choices[1]
+)
+
+
+# Plotly Dropdown to select Y-axis dynamically
+plot_ly(data = filtered_general_table) %>%
+  add_bars(x = ~Group, y = ~`Vaccination Rate (%)`, name = "Group") %>%
+  layout(
+    title = "Analysis by Education Level",
+    xaxis = list(title = "Education Level"),
+    yaxis = list(title = "Values"),
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = lapply(y_axis_choices, function(col) {
+          list(
+            method = "restyle",
+            args = list(list(y = list(filtered_general_table[[col]]))),
+            label = col
+          )
+        })
+      )
+    )
+  )
+
+```
+
+<br>
+
+```{r cohort information education table}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Education:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Education: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# Display the filtered dataframe in a datatable
+datatable(filtered_general_table, options = list(autoWidth = TRUE))
+
+
+```
+
+### Income level
+
+```{r cohort information income}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Income:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Income: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# List of columns that can be chosen for the Y-axis
+y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+
+# Default plot using the first available column for the Y-axis
+plot_dynamic <- barplot_general_metrics(
+  data = filtered_general_table,
+  y_var = y_axis_choices[1],
+  plot_title = "Dynamic Barplot for Vaccination Rate",
+  x_label = "Income Level",
+  y_label = y_axis_choices[1]
+)
+
+
+# Plotly Dropdown to select Y-axis dynamically
+plot_ly(data = filtered_general_table) %>%
+  add_bars(x = ~Group, y = ~`Vaccination Rate (%)`, name = "Group") %>%
+  layout(
+    title = "Analysis by Income Level",
+    xaxis = list(title = "Income Level"),
+    yaxis = list(title = "Values"),
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = lapply(y_axis_choices, function(col) {
+          list(
+            method = "restyle",
+            args = list(list(y = list(filtered_general_table[[col]]))),
+            label = col
+          )
+        })
+      )
+    )
+  )
+
+```
+
+<br>
+
+```{r cohort information income table}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Income:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Income: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# Display the filtered dataframe in a datatable
+datatable(filtered_general_table, options = list(autoWidth = TRUE))
+
+```
+
+### Migration background
+
+```{r cohort information migration}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Migration:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Migration: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# List of columns that can be chosen for the Y-axis
+y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+
+# Default plot using the first available column for the Y-axis
+plot_dynamic <- barplot_general_metrics(
+  data = filtered_general_table,
+  y_var = y_axis_choices[1],
+  plot_title = "Dynamic Barplot for Vaccination Rate",
+  x_label = "Migration background",
+  y_label = y_axis_choices[1]
+)
+
+
+# Plotly Dropdown to select Y-axis dynamically
+plot_ly(data = filtered_general_table) %>%
+  add_bars(x = ~Group, y = ~`Vaccination Rate (%)`, name = "Group") %>%
+  layout(
+    title = "Analysis by Migration background",
+    xaxis = list(title = "Migration background"),
+    yaxis = list(title = "Values"),
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = lapply(y_axis_choices, function(col) {
+          list(
+            method = "restyle",
+            args = list(list(y = list(filtered_general_table[[col]]))),
+            label = col
+          )
+        })
+      )
+    )
+  )
+
+```
+
+<br>
+
+```{r cohort information migration table}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Migration:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Migration: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# Display the filtered dataframe in a datatable
+datatable(filtered_general_table, options = list(autoWidth = TRUE))
+
+```
+
+### Household type
+
+
+```{r cohort information household}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Household:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Household: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# List of columns that can be chosen for the Y-axis
+y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+
+# Default plot using the first available column for the Y-axis
+plot_dynamic <- barplot_general_metrics(
+  data = filtered_general_table,
+  y_var = y_axis_choices[1],
+  plot_title = "Dynamic Barplot for Vaccination Rate",
+  x_label = "Household type",
+  y_label = y_axis_choices[1]
+)
+
+
+# Plotly Dropdown to select Y-axis dynamically
+plot_ly(data = filtered_general_table) %>%
+  add_bars(x = ~Group, y = ~`Vaccination Rate (%)`, name = "Group") %>%
+  layout(
+    title = "Analysis by Household type",
+    xaxis = list(title = "Household type"),
+    yaxis = list(title = "Values"),
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = lapply(y_axis_choices, function(col) {
+          list(
+            method = "restyle",
+            args = list(list(y = list(filtered_general_table[[col]]))),
+            label = col
+          )
+        })
+      )
+    )
+  )
+
+```
+
+<br>
+
+```{r cohort information household table}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Household:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Household: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# Display the filtered dataframe in a datatable
+datatable(filtered_general_table, options = list(autoWidth = TRUE))
+
+```
+
+
+### Sex
+
+```{r cohort information sex}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group %in% c("Entire Cohort", "Male", "Female")) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+
+# List of columns that can be chosen for the Y-axis
+y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+
+# Default plot using the first available column for the Y-axis
+plot_dynamic <- barplot_general_metrics(
+  data = filtered_general_table,
+  y_var = y_axis_choices[1],
+  plot_title = "Dynamic Barplot for Vaccination Rate",
+  x_label = "Sex",
+  y_label = y_axis_choices[1]
+)
+
+
+# Plotly Dropdown to select Y-axis dynamically
+plot_ly(data = filtered_general_table) %>%
+  add_bars(x = ~Group, y = ~`Vaccination Rate (%)`, name = "Group") %>%
+  layout(
+    title = "Analysis by Sex",
+    xaxis = list(title = "Sex"),
+    yaxis = list(title = "Values"),
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = lapply(y_axis_choices, function(col) {
+          list(
+            method = "restyle",
+            args = list(list(y = list(filtered_general_table[[col]]))),
+            label = col
+          )
+        })
+      )
+    )
+  )
+
+```
+
+<br>
+
+```{r cohort information sex table}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group %in% c("Entire Cohort", "Male", "Female")) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# Display the filtered dataframe in a datatable
+datatable(filtered_general_table, options = list(autoWidth = TRUE))
+
+```
+
+### Residence Area
+
+```{r cohort information residence}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Residence:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Residence: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# List of columns that can be chosen for the Y-axis
+y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+
+# Default plot using the first available column for the Y-axis
+plot_dynamic <- barplot_general_metrics(
+  data = filtered_general_table,
+  y_var = y_axis_choices[1],
+  plot_title = "Dynamic Barplot for Vaccination Rate",
+  x_label = "Residence area",
+  y_label = y_axis_choices[1]
+)
+
+
+# Plotly Dropdown to select Y-axis dynamically
+plot_ly(data = filtered_general_table) %>%
+  add_bars(x = ~Group, y = ~`Vaccination Rate (%)`, name = "Group") %>%
+  layout(
+    title = "Analysis by Residence area",
+    xaxis = list(title = "Residence area"),
+    yaxis = list(title = "Values"),
+    updatemenus = list(
+      list(
+        y = 1,
+        buttons = lapply(y_axis_choices, function(col) {
+          list(
+            method = "restyle",
+            args = list(list(y = list(filtered_general_table[[col]]))),
+            label = col
+          )
+        })
+      )
+    )
+  )
+
+```
+
+<br>
+
+```{r cohort information residence table}
+#| echo: false
+#| warning: false
+#| error: false
+#| fig-column: page-right
+#| fig-width: 10
+#| fig-height: 8
+
+filtered_general_table <- global_metrics_df %>%
+  filter(Group == "Entire Cohort" | grepl("^Residence:", Group)) %>%
+  mutate(
+    order = ifelse(Group == "Entire Cohort", 1, 2),  # Assign 1 to 'Entire Cohort' and 2 to others
+    Group = gsub("^Residence: ", "", Group)  # Remove 'Education level:' from the Group column
+  ) %>%
+  arrange(order) %>%  # Arrange by the 'order' column
+  select(-order)  # Remove the 'order' column
+
+# Display the filtered dataframe in a datatable
+datatable(filtered_general_table, options = list(autoWidth = TRUE))
+
+
+```
+
+
+::: 
+
 
 ## Testing metrics
 
@@ -2576,13 +3220,13 @@ datatable(rq1_2_age_tests_table,
 
 :::
 
-## Gender
+## Sex
 
 ::: panel-tabset
 
 ### Average tests
 
-```{r rq1 gender boxplot}
+```{r rq1 sex boxplot}
 #| echo: false
 #| warning: false
 #| error: false
@@ -2591,9 +3235,9 @@ datatable(rq1_2_age_tests_table,
 #| fig-height: 8
 
 
-p1_plotly <- boxplot_custom_group(data = rq1_2_gender, 
+p1_plotly <- boxplot_custom_group(data = rq1_2_sex, 
                                   x_var = "sex_cd",
-                                  x_label = "Gender",
+                                  x_label = "Sex",
                                   y_label = "PCR Tests",
                                   plot_title = "Average number of COVID-19 PCR tests",
                                   x_axis_order = plotOrderAge)
@@ -2604,7 +3248,7 @@ p1_plotly
 
 <br>
 
-```{r RQ1 gender table}
+```{r RQ1 sex table}
 #| echo: false
 #| warning: false
 #| error: false
@@ -2612,20 +3256,20 @@ p1_plotly
 #| fig-width: 10
 #| fig-height: 5
 
-rq1_2_gender <- rq1_2_gender %>%
+rq1_2_sex <- rq1_2_sex %>%
   mutate(n = as.character(n)) %>%
   mutate(n = ifelse(is.na(n), "Excluded", n))
 
-new_col_names <- c(sex_cd = "Gender", 
+new_col_names <- c(sex_cd = "Sex", 
                    n = "N", 
                    type = "Tests",
                    mean = "Mean", 
                    sd = "SD",
                    median = "Median")
 
-rq1_2_gender_table <- setNames(rq1_2_gender[, names(new_col_names)], new_col_names)
+rq1_2_sex_table <- setNames(rq1_2_sex[, names(new_col_names)], new_col_names)
 
-datatable(rq1_2_gender_table, 
+datatable(rq1_2_sex_table, 
           filter = "top", 
           options = list(pageLength = 8, class = 'row-border stripe hover compact'), 
           rownames = FALSE, 
@@ -2638,7 +3282,7 @@ datatable(rq1_2_gender_table,
 
 ### Tests distribution
 
-```{r rq1 gender boxplot2}
+```{r rq1 sex boxplot2}
 #| echo: false
 #| warning: false
 #| error: false
@@ -2646,13 +3290,13 @@ datatable(rq1_2_gender_table,
 #| fig-width: 10
 #| fig-height: 8
   
-fig <- barplot_stacked_custom_q4(data = rq1_2_gender_tests %>% filter(type == 'All'),
+fig <- barplot_stacked_custom_q4(data = rq1_2_sex_tests %>% filter(type == 'All'),
                               x_var = 'sex_cd',
                               y_var = "value",
                               group_var = "tests",  # Grouping variable
-                              x_label = "Gender",
+                              x_label = "Sex",
                               y_label = "Percentage",
-                              plot_title = "COVID-19 Tests Distribution by Gender",
+                              plot_title = "COVID-19 Tests Distribution by Sex",
                               legend_title = 'Number of tests',
                               x_axis_order = plotOrderSex)
 fig
@@ -2661,7 +3305,7 @@ fig
 
 <br>
 
-```{r rq1 gender boxplot2 positive}
+```{r rq1 sex boxplot2 positive}
 #| echo: false
 #| warning: false
 #| error: false
@@ -2669,13 +3313,13 @@ fig
 #| fig-width: 10
 #| fig-height: 8
   
-fig <- barplot_stacked_custom_q4(data = rq1_2_gender_tests %>% filter(type == 'Positives'),
+fig <- barplot_stacked_custom_q4(data = rq1_2_sex_tests %>% filter(type == 'Positives'),
                               x_var = 'sex_cd',
                               y_var = "value",
                               group_var = "tests",  # Grouping variable
-                              x_label = "Gender",
+                              x_label = "Sex",
                               y_label = "Percentage",
-                              plot_title = "COVID-19 Positive Tests Distribution by Gender",
+                              plot_title = "COVID-19 Positive Tests Distribution by Sex",
                               legend_title = 'Number of tests',
                               x_axis_order = plotOrderSex)
 fig
@@ -2684,7 +3328,7 @@ fig
 
 <br>
 
-```{r rq12 gender table tests}
+```{r rq12 sex table tests}
 #| echo: false
 #| warning: false
 #| error: false
@@ -2692,19 +3336,19 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq1_2_gender_tests <- rq1_2_gender_tests %>%
+rq1_2_sex_tests <- rq1_2_sex_tests %>%
   mutate(n = as.character(n)) %>%
   mutate(n = ifelse(is.na(n), "Excluded", n))
 
-new_col_names <- c(sex_cd = "Gender", 
+new_col_names <- c(sex_cd = "Sex", 
                    type = "Tests",
                    n = "N", # Total individuals per group
                    tests = "# Tests",
                    value = "Distribution")
 
-rq1_2_gender_tests_table <- setNames(rq1_2_gender_tests[, names(new_col_names)], new_col_names)
+rq1_2_sex_tests_table <- setNames(rq1_2_sex_tests[, names(new_col_names)], new_col_names)
 
-datatable(rq1_2_gender_tests_table,
+datatable(rq1_2_sex_tests_table,
           filter = "top",
           options = list(pageLength = 8, class = 'row-border stripe hover compact'),
           rownames = FALSE,
@@ -4086,13 +4730,13 @@ datatable(rq3_age_doses_table,
 
 :::
 
-## Gender
+## Sex
 
 ::: panel-tabset
 
 ### Overall status
 
-```{r rq3 gender barplot}
+```{r rq3 sex barplot}
 #| echo: false
 #| warning: false
 #| error: false
@@ -4100,12 +4744,12 @@ datatable(rq3_age_doses_table,
 #| fig-width: 10
 #| fig-height: 8
 
-fig <- barplot_custom(data = rq3_gender_aggreg %>% filter(fully_vaccinated_bl == TRUE),
+fig <- barplot_custom(data = rq3_sex_aggreg %>% filter(fully_vaccinated_bl == TRUE),
                               x_var = 'sex_cd',
                               y_var = 'overall',
-                              x_label = "Gender",
+                              x_label = "Sex",
                               y_label = "Percentage",
-                              plot_title = "COVID-19 vaccination rate by Gender",
+                              plot_title = "COVID-19 vaccination rate by Sex",
                               legend_title = 'Status',
                               x_axis_order = plotOrderSex)
 fig
@@ -4115,7 +4759,7 @@ fig
 
 ### Subgroup status
 
-```{r rq3 gender boxplot}
+```{r rq3 sex boxplot}
 #| echo: false
 #| warning: false
 #| error: false
@@ -4123,13 +4767,13 @@ fig
 #| fig-width: 10
 #| fig-height: 8
 
-p1_plotly <- barplot_stacked_custom_q4(data = rq3_gender_aggreg,
+p1_plotly <- barplot_stacked_custom_q4(data = rq3_sex_aggreg,
                                        x_var = "sex_cd",
                                        y_var = "subgroup",
                                        group_var = "fully_vaccinated_bl",
-                                       x_label = "Gender",
+                                       x_label = "Sex",
                                        y_label = "Percentage",
-                                       plot_title = "COVID-19 vaccination rate by Gender",
+                                       plot_title = "COVID-19 vaccination rate by Sex",
                                        legend_title = 'Status',
                                        x_axis_order = plotOrderSex)
 
@@ -4140,7 +4784,7 @@ p1_plotly
 
 ### Statistics
 
-```{r rq3 gender table}
+```{r rq3 sex table}
 #| echo: false
 #| warning: false
 #| error: false
@@ -4148,21 +4792,21 @@ p1_plotly
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_gender_aggreg <- rq3_gender_aggreg %>% filter(fully_vaccinated_bl == TRUE)
+rq3_sex_aggreg <- rq3_sex_aggreg %>% filter(fully_vaccinated_bl == TRUE)
 
-rq3_gender_aggreg <- rq3_gender_aggreg %>%
+rq3_sex_aggreg <- rq3_sex_aggreg %>%
   mutate(n = as.character(n)) %>%
   mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
-new_col_names <- c(sex_cd = "Gender", 
+new_col_names <- c(sex_cd = "Sex", 
                    n = "N", # Total individuals per group
                    overall = "Subgroup",
                    subgroup = "Overall")
 
-rq3_gender_table <- setNames(rq3_gender_aggreg[, names(new_col_names)], new_col_names)
+rq3_sex_table <- setNames(rq3_sex_aggreg[, names(new_col_names)], new_col_names)
 
-datatable(rq3_gender_table, 
+datatable(rq3_sex_table, 
           filter = "top", 
           options = list(pageLength = 8, class = 'row-border stripe hover compact'), 
           rownames = FALSE, 
@@ -4175,7 +4819,7 @@ datatable(rq3_gender_table,
 
 ### Doses distribution
 
-```{r rq3 gender boxplot2}
+```{r rq3 sex boxplot2}
 #| echo: false
 #| warning: false
 #| error: false
@@ -4183,13 +4827,13 @@ datatable(rq3_gender_table,
 #| fig-width: 10
 #| fig-height: 8
 
-fig <- barplot_stacked_custom_q4(data = rq3_gender_doses,
+fig <- barplot_stacked_custom_q4(data = rq3_sex_doses,
                               x_var = 'sex_cd',
                                        y_var = "value",
                                        group_var = "doses",  # Grouping variable
-                              x_label = "Gender",
+                              x_label = "Sex",
                               y_label = "Percentage",
-                              plot_title = "Distribution of COVID-19 vaccine doses by Gender",
+                              plot_title = "Distribution of COVID-19 vaccine doses by Sex",
                               legend_title = 'Number of doses',
                               x_axis_order = plotOrderSex)
 fig
@@ -4198,7 +4842,7 @@ fig
 
 <br>
 
-```{r rq3 gender table doses}
+```{r rq3 sex table doses}
 #| echo: false
 #| warning: false
 #| error: false
@@ -4206,19 +4850,19 @@ fig
 #| fig-width: 10
 #| fig-height: 5
 
-rq3_gender_doses <- rq3_gender_doses %>%
+rq3_sex_doses <- rq3_sex_doses %>%
   mutate(n = as.character(n)) %>%
   mutate(n = ifelse(is.na(n), "Excluded", n))
 
 
-new_col_names <- c(sex_cd = "Gender", 
+new_col_names <- c(sex_cd = "Sex", 
                    n = "N", # Total individuals per group
                    doses = "Doses",
                    value = "Distribution")
 
-rq3_gender_doses_table <- setNames(rq3_gender_doses[, names(new_col_names)], new_col_names)
+rq3_sex_doses_table <- setNames(rq3_sex_doses[, names(new_col_names)], new_col_names)
 
-datatable(rq3_gender_doses_table,
+datatable(rq3_sex_doses_table,
           filter = "top",
           options = list(pageLength = 8, class = 'row-border stripe hover compact'),
           rownames = FALSE,
@@ -5654,13 +6298,13 @@ datatable(rq4_age_aggreg_table,
 :::
 
 
-## Gender
+## Sex
 
 ::: panel-tabset
 
 ### Overall status
 
-```{r rq4 gender barplot}
+```{r rq4 sex barplot}
 #| echo: false
 #| warning: false
 #| error: false
@@ -5669,16 +6313,16 @@ datatable(rq4_age_aggreg_table,
 #| fig-height: 8
 
 
-barplot_grouped_custom1(data1 = rq4_gender_aggreg %>% filter(cohort == "All"),
+barplot_grouped_custom1(data1 = rq4_sex_aggreg %>% filter(cohort == "All"),
                         x_var1 = "sex_cd",
                         y_var1 = "overall",
-                        data2 = rq4_gender_aggreg %>% filter(cohort == "Vaccinated"),
+                        data2 = rq4_sex_aggreg %>% filter(cohort == "Vaccinated"),
                         x_var2 = "sex_cd",
                         y_var2 = "overall",
-                        data3 = rq4_gender_aggreg %>% filter(cohort == "Unvaccinated"),
+                        data3 = rq4_sex_aggreg %>% filter(cohort == "Unvaccinated"),
                         x_var3 = "sex_cd",
                         y_var3 = "overall",
-                        x_label = "Gender",
+                        x_label = "Sex",
                         y_label = "Percentage",
                         plot_title = "COVID-19 Hospitalisations",
                         legend_title = "Cohort",
@@ -5688,7 +6332,7 @@ barplot_grouped_custom1(data1 = rq4_gender_aggreg %>% filter(cohort == "All"),
 
 ### Subgroup status
 
-```{r rq4 gender barplot stacked}
+```{r rq4 sex barplot stacked}
 #| echo: false
 #| warning: false
 #| error: false
@@ -5696,11 +6340,11 @@ barplot_grouped_custom1(data1 = rq4_gender_aggreg %>% filter(cohort == "All"),
 #| fig-width: 10
 #| fig-height: 8
 
-p1_plotly <- barplot_stacked_custom_q4(data = rq4_gender_aggreg %>% filter(cohort == "All"),
+p1_plotly <- barplot_stacked_custom_q4(data = rq4_sex_aggreg %>% filter(cohort == "All"),
                                     x_var = "sex_cd",
                                     y_var = "subgroup",
                                     group_var = "hospi_due_to_covid_bl",  # Grouping variable
-                                    x_label = "Gender",
+                                    x_label = "Sex",
                                     y_label = "Percentage",
                                     plot_title = "COVID-19 hospitalisations",
                                     legend_title = "COVID-19 Hospitalisations",
@@ -5712,7 +6356,7 @@ p1_plotly
 
 <br>
 
-```{r rq4 gender barplot stacked 2}
+```{r rq4 sex barplot stacked 2}
 #| echo: false
 #| warning: false
 #| error: false
@@ -5721,11 +6365,11 @@ p1_plotly
 #| fig-height: 8
 
 
-p1_plotly <- barplot_stacked_custom_q4(data = rq4_gender_aggreg %>% filter(cohort == "Vaccinated"),
+p1_plotly <- barplot_stacked_custom_q4(data = rq4_sex_aggreg %>% filter(cohort == "Vaccinated"),
                                     x_var = "sex_cd",
                                     y_var = "subgroup",
                                     group_var = "hospi_due_to_covid_bl",  # Grouping variable
-                                    x_label = "Gender",
+                                    x_label = "Sex",
                                     y_label = "Percentage",
                                     plot_title = "COVID-19 hospitalisations in vaccinated population",
                                     legend_title = "COVID-19 Hospitalisations",
@@ -5738,7 +6382,7 @@ p1_plotly
 
 <br>
 
-```{r rq4 gender barplot stacked 3}
+```{r rq4 sex barplot stacked 3}
 #| echo: false
 #| warning: false
 #| error: false
@@ -5746,11 +6390,11 @@ p1_plotly
 #| fig-width: 10
 #| fig-height: 8
 
-p1_plotly <- barplot_stacked_custom_q4(data = rq4_gender_aggreg %>% filter(cohort == "Unvaccinated"),
+p1_plotly <- barplot_stacked_custom_q4(data = rq4_sex_aggreg %>% filter(cohort == "Unvaccinated"),
                                     x_var = "sex_cd",
                                     y_var = "subgroup",
                                     group_var = "hospi_due_to_covid_bl",  # Grouping variable
-                                    x_label = "Gender",
+                                    x_label = "Sex",
                                     y_label = "Percentage",
                                     plot_title = "COVID-19 hospitalisations in unvaccinated population",
                                     legend_title = "COVID-19 Hospitalisations",
@@ -5762,7 +6406,7 @@ p1_plotly
 
 ### Statistics
 
-```{r rq4 gender stat}
+```{r rq4 sex stat}
 #| echo: false
 #| warning: false
 #| error: false
@@ -5771,28 +6415,28 @@ p1_plotly
 #| fig-height: 8
 
 # Ensure all combinations of NUTS_ID and cohort exist
-expanded_df <- rq4_gender_aggreg %>%
+expanded_df <- rq4_sex_aggreg %>%
   select(sex_cd) %>%
   distinct() %>%
   crossing(cohort = c("All", "Vaccinated", "Unvaccinated"))
 
 # Join with the existing data
-rq4_gender_aggreg <- expanded_df %>%
-  left_join(rq4_gender_aggreg, join_by("sex_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
+rq4_sex_aggreg <- expanded_df %>%
+  left_join(rq4_sex_aggreg, join_by("sex_cd", "cohort")) %>% filter(hospi_due_to_covid_bl == TRUE)
 
-rq4_gender_aggreg <- rq4_gender_aggreg %>%
+rq4_sex_aggreg <- rq4_sex_aggreg %>%
   mutate(n = as.character(n)) %>%
   mutate(n = ifelse(is.na(n), "Excluded", n))
 
-new_col_names <- c(sex_cd = "Gender",
+new_col_names <- c(sex_cd = "Sex",
                    cohort = "Cohort",
                    n = "N",
                    overall = "Overall",
                    subgroup = "Subgroup")
 
-rq4_gender_aggreg_table <- setNames(rq4_gender_aggreg[, names(new_col_names)], new_col_names)
+rq4_sex_aggreg_table <- setNames(rq4_sex_aggreg[, names(new_col_names)], new_col_names)
 
-datatable(rq4_gender_aggreg_table, 
+datatable(rq4_sex_aggreg_table, 
           filter = "top", 
           options = list(pageLength = 8, class = 'row-border stripe hover compact'), 
           rownames = FALSE, 
