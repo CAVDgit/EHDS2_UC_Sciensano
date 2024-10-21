@@ -1,6 +1,6 @@
-# Script that generates the aggregate results into one csv file
+# Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.7" 
+# script_version <- "1.8" 
 # date of version : 24-10-24
 
 library(tidyverse)
@@ -563,34 +563,43 @@ total_summary <- df_clean %>%
   summarise(
     count = result$rounded_individuals_nm,
     
-    # Age statistics
-    avg_age = round(mean(age_nm, na.rm = TRUE), 2),
-    median_age = round(median(age_nm, na.rm = TRUE), 2),
-    sd_age = round(sd(age_nm, na.rm = TRUE), 2),  # Standard Deviation for Age
-    iqr_age = paste0(round(quantile(age_nm, 0.25, na.rm = TRUE), 2), "-", 
-                     round(quantile(age_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Age
+    # Age statistics (set -1 if count < threshold)
+    avg_age = ifelse(count >= threshold, round(mean(age_nm, na.rm = TRUE), 2), -1),
+    median_age = ifelse(count >= threshold, round(median(age_nm, na.rm = TRUE), 2), -1),
+    sd_age = ifelse(count >= threshold, round(sd(age_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Age
+    iqr_age = ifelse(count >= threshold, 
+                     paste0(round(quantile(age_nm, 0.25, na.rm = TRUE), 2), "-", 
+                            round(quantile(age_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Age
     
-    # Test statistics
+    # Test statistics (set -1 if individuals_with_tests < threshold)
     individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
-    avg_test_nm = round(mean(test_nm, na.rm = TRUE), 2),
-    median_test_nm = round(median(test_nm, na.rm = TRUE), 2),
-    sd_test_nm = round(sd(test_nm, na.rm = TRUE), 2),  # Standard Deviation for Tests
-    iqr_test_nm = paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
-                         round(quantile(test_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Tests
+    avg_test_nm = ifelse(individuals_with_tests >= threshold, round(mean(test_nm, na.rm = TRUE), 2), -1),
+    median_test_nm = ifelse(individuals_with_tests >= threshold, round(median(test_nm, na.rm = TRUE), 2), -1),
+    sd_test_nm = ifelse(individuals_with_tests >= threshold, round(sd(test_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+    iqr_test_nm = ifelse(individuals_with_tests >= threshold, 
+                         paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
+                                round(quantile(test_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
     
-    # Vaccine statistics
+    # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
     individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
-    avg_dose_nm = round(mean(doses_nm, na.rm = TRUE), 2),
-    median_dose_nm = round(median(doses_nm, na.rm = TRUE), 2),
-    sd_dose_nm = round(sd(doses_nm, na.rm = TRUE), 2),  # Standard Deviation for Doses
-    iqr_dose_nm = paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
-                         round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Doses
+    avg_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(mean(doses_nm, na.rm = TRUE), 2), -1),
+    median_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(median(doses_nm, na.rm = TRUE), 2), -1),
+    sd_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(sd(doses_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Doses
+    iqr_dose_nm = ifelse(individuals_with_vaccine >= threshold, 
+                         paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
+                                round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Doses
     
-    # Vaccination and hospitalization rates
-    fully_vaccinated_count = sum(fully_vaccinated_bl == TRUE, na.rm = TRUE),
-    vaccination_rate = round(fully_vaccinated_count / count * 100, 2),
+    # Vaccination rate (set -1 if fully_vaccinated_count < threshold)
+    fully_vaccinated_count = result$individuals_vaccinated_nm,
+    vaccination_rate = ifelse(fully_vaccinated_count >= threshold, 
+                              round(fully_vaccinated_count / count * 100, 2), -1),
+    fully_vaccinated_count = ifelse(fully_vaccinated_count >= threshold, fully_vaccinated_count, -1),
+    
+    # Hospitalisation rate (set -1 if hospitalised_true < threshold)
     hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
-    hospitalisation_rate = round(hospitalised_true / count * 100, 2)
+    hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 2), -1),
+    hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
+
   )
 
 # Collapse the entire row into a single string with ";" separating the values
@@ -622,34 +631,42 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
     summarise(
       count = count_value,
       
-      # Age statistics
-      avg_age = round(mean(age_nm, na.rm = TRUE), 2),
-      median_age = round(median(age_nm, na.rm = TRUE), 2),
-      sd_age = round(sd(age_nm, na.rm = TRUE), 2),  # Standard Deviation for Age
-      iqr_age = paste0(round(quantile(age_nm, 0.25, na.rm = TRUE), 2), "-", 
-                       round(quantile(age_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Age
+      # Age statistics (set -1 if count < threshold)
+      avg_age = ifelse(count >= threshold, round(mean(age_nm, na.rm = TRUE), 2), -1),
+      median_age = ifelse(count >= threshold, round(median(age_nm, na.rm = TRUE), 2), -1),
+      sd_age = ifelse(count >= threshold, round(sd(age_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Age
+      iqr_age = ifelse(count >= threshold, 
+                       paste0(round(quantile(age_nm, 0.25, na.rm = TRUE), 2), "-", 
+                              round(quantile(age_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Age
       
-      # Test statistics
+      # Test statistics (set -1 if individuals_with_tests < threshold)
       individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
-      avg_test_nm = round(mean(test_nm, na.rm = TRUE), 2),
-      median_test_nm = round(median(test_nm, na.rm = TRUE), 2),
-      sd_test_nm = round(sd(test_nm, na.rm = TRUE), 2),  # Standard Deviation for Tests
-      iqr_test_nm = paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
-                           round(quantile(test_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Tests
+      avg_test_nm = ifelse(individuals_with_tests >= threshold, round(mean(test_nm, na.rm = TRUE), 2), -1),
+      median_test_nm = ifelse(individuals_with_tests >= threshold, round(median(test_nm, na.rm = TRUE), 2), -1),
+      sd_test_nm = ifelse(individuals_with_tests >= threshold, round(sd(test_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+      iqr_test_nm = ifelse(individuals_with_tests >= threshold, 
+                           paste0(round(quantile(test_nm, 0.25, na.rm = TRUE), 2), "-", 
+                                  round(quantile(test_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
       
-      # Vaccine statistics
+      # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
       individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
-      avg_dose_nm = round(mean(doses_nm, na.rm = TRUE), 2),
-      median_dose_nm = round(median(doses_nm, na.rm = TRUE), 2),
-      sd_dose_nm = round(sd(doses_nm, na.rm = TRUE), 2),  # Standard Deviation for Doses
-      iqr_dose_nm = paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
-                           round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)),  # IQR for Doses
+      avg_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(mean(doses_nm, na.rm = TRUE), 2), -1),
+      median_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(median(doses_nm, na.rm = TRUE), 2), -1),
+      sd_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(sd(doses_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Doses
+      iqr_dose_nm = ifelse(individuals_with_vaccine >= threshold, 
+                           paste0(round(quantile(doses_nm, 0.25, na.rm = TRUE), 2), "-", 
+                                  round(quantile(doses_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Doses
       
-      # Vaccination and hospitalization rates
+      # Vaccination rate (set -1 if fully_vaccinated_count < threshold)
       fully_vaccinated_count = sum(fully_vaccinated_bl == TRUE, na.rm = TRUE),
-      vaccination_rate = round(fully_vaccinated_count / count * 100, 2),
+      vaccination_rate = ifelse(fully_vaccinated_count >= threshold, 
+                                round(fully_vaccinated_count / count * 100, 2), -1),
+      fully_vaccinated_count = ifelse(fully_vaccinated_count >= threshold, fully_vaccinated_count, -1),
+      
+      # Hospitalisation rate (set -1 if hospitalised_true < threshold)
       hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
-      hospitalisation_rate = round(hospitalised_true / count * 100, 2)
+      hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 2), -1),
+      hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
     )
   
   
