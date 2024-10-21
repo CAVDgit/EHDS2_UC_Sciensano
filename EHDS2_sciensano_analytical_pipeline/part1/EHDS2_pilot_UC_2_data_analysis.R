@@ -1,4 +1,4 @@
-# Script that generates the aggregate results into one csv file with 
+# Script that generates the aggregate results into one csv file
 # statistics related to each research questions.
 # script_version <- "1.7" 
 # date of version : 24-10-24
