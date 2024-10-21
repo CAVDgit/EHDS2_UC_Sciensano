@@ -1,7 +1,7 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.5" 
-# date of version : 08-10-24
+# script_version <- "1.6" 
+# date of version : 24-10-24
 
 library(tidyverse)
 library(DT)
@@ -92,11 +92,13 @@ df <- read.csv(file_path, colClasses = data_types, header = TRUE)
 df$sex_cd <- ifelse(df$sex_cd == 1, 'M',
                     ifelse(df$sex_cd == 2, 'F', NA))
 
+
 # remove NA from essential variable
 df_clean <- df %>% filter(!is.na(person_id),
                           !is.na(country_cd),
                           age_nm >= age_min & age_nm <age_max,
                           exitus_bl == F)
+
 
 # Research questions (RQ)
 columns_to_aggregate <- c("age_cd",
@@ -216,6 +218,7 @@ dataset_info2 <- data.frame(
 
 rq <- bind_rows(rq, dataset_info2)
 
+
 #### RQ1 
 
 # distribution of test
@@ -275,7 +278,7 @@ rq1_summary <- df_clean %>%
 rq <- bind_rows(rq, rq1_summary)
 
 
-# education, income, household, migration, gender, sex
+# education, income, household, migration, area, sex
 for (col in columns_to_aggregate) {
   stats_df <- df_clean %>%
     filter(!is.na(get(col)), !is.na(test_nm)) %>%
@@ -551,6 +554,111 @@ rq <- rq[, c("RQ", setdiff(names(rq), "RQ"))]
 # Ajouter la colonne du node
 rq <- rq %>% mutate(country = as.factor(country))
 
+
+
+# NEW V1.6
+
+# Calculate total cohort summary without grouping by sex
+total_summary <- df_clean %>%
+  summarise(
+    count = result$rounded_individuals_nm,
+    avg_age = round(mean(age_nm, na.rm = TRUE), 2),
+    individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
+    avg_test_nm = round(mean(test_nm, na.rm = TRUE), 2),
+    individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
+    avg_dose_nm = round(mean(doses_nm, na.rm = TRUE), 2),
+    fully_vaccinated_count = result$individuals_vaccinated_nm,
+    vaccination_rate = round(fully_vaccinated_count/count*100, 2),
+    hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
+    hospitalisation_rate = round(hospitalised_true/count*100, 2)
+  )
+
+# Collapse the entire row into a single string with ";" separating the values
+total_summary_collapsed <- paste(total_summary, collapse = ";")
+
+# Create a new dataframe with the desired format
+dataset_info_all <- data.frame(
+  RQ = "dataset_info_all",
+  country = total_summary_collapsed
+)
+
+rq <- bind_rows(rq, dataset_info_all)
+
+
+
+# Function to calculate summary statistics for any column, excluding NAs
+create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
+  # Filter the dataframe by the group value, excluding NA
+  filtered_df <- df_clean %>%
+    filter(.data[[group_col]] == group_value, !is.na(.data[[group_col]]))
+  
+  # Check if the count is below the threshold, if so, return NULL
+  count_value <- nrow(filtered_df)
+  if (count_value < threshold) {
+    return(NULL)  # Skip if count is below the threshold
+  }
+  
+  group_summary <- filtered_df %>%
+    summarise(
+      count = count_value,
+      avg_age = round(mean(age_nm, na.rm = TRUE), 2),
+      individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
+      avg_test_nm = round(mean(test_nm, na.rm = TRUE), 2),
+      individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
+      avg_dose_nm = round(mean(doses_nm, na.rm = TRUE), 2),
+      fully_vaccinated_count = sum(fully_vaccinated_bl == TRUE, na.rm = TRUE),
+      vaccination_rate = round(fully_vaccinated_count/count*100, 2),
+      hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
+      hospitalisation_rate = round(hospitalised_true/count*100, 2)
+    )
+  
+  # Collapse the entire row into a single string with ";" separating the values
+  group_summary_collapsed <- paste(group_summary, collapse = ";")
+  
+  # Create the new dataframe
+  data.frame(
+    RQ = rq_label,
+    country = group_summary_collapsed
+  )
+}
+
+# Function to create summaries for multiple columns, excluding specific columns and low counts
+create_summaries_for_columns <- function(df_clean, columns_to_aggregate) {
+  results <- list()  # To store all summary dataframes
+  
+  for (col in columns_to_aggregate) {
+    # Skip specific columns
+    if (col %in% c("residence_area_lau_cd", "residence_area_cd")) {
+      next  # Skip these columns
+    }
+    
+    unique_values <- unique(df_clean[[col]])  # Get unique values in the column
+    
+    # For each unique value in the column, calculate the summary
+    for (value in unique_values) {
+      if (!is.na(value)) {  # Exclude NA values
+        rq_label <- paste("dataset_info", col, value, sep = "_")  # Create a unique label
+        summary_df <- create_group_summary(df_clean, col, value, rq_label)
+        
+        # If the summary_df is not NULL (i.e., count >= threshold), add it to the results
+        if (!is.null(summary_df)) {
+          results[[rq_label]] <- summary_df  # Store the result in the list
+        }
+      }
+    }
+  }
+  
+  # Combine all summaries into a single dataframe
+  final_df <- do.call(bind_rows, results)
+  return(final_df)
+}
+# Generate summaries for each column
+final_summaries_df <- create_summaries_for_columns(df_clean, columns_to_aggregate)
+
+rq <- bind_rows(rq, final_summaries_df)
+
+
+
 # Attribute the data type to each variable
 aggregated_data <- rq %>%
   mutate_at(vars("RQ", "age_cd"), as.factor)
@@ -573,12 +681,3 @@ write.table(aggregated_data,
             sep =" ", 
             fileEncoding = "UTF-8", 
             na = "NA")
-
-# Test import
-
-# test_import <- read.csv(sprintf("EHDS2_pilot_UC1_data_%s.csv", country), 
-#                       header = TRUE, 
-#                       sep =" ", 
-#                       fileEncoding = "UTF-8", 
-#                       na = "NA")
-
