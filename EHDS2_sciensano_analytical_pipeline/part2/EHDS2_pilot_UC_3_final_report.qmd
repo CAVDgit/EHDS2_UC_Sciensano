@@ -44,7 +44,7 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 ##### Script ######
 # version date: 21-10-24
-script_version <- "1.4"
+script_version <- "1.5"
 
 library(tidyverse)
 library(ggplot2)
@@ -475,15 +475,32 @@ extract_group_summary <- function(rq_df, rq_label, cohort_label) {
   data.frame(
     cohort = cohort_label,
     count = extracted_values_group[1],
+    # Age-related fields
     avg_age = extracted_values_group[2],
-    individuals_with_tests = extracted_values_group[3],
-    avg_test_nm = extracted_values_group[4],
-    individuals_with_vaccine = extracted_values_group[5],
-    avg_dose_nm = extracted_values_group[6],
-    fully_vaccinated_count = extracted_values_group[7],
-    vaccination_rate = extracted_values_group[8],
-    hospitalised_true = extracted_values_group[9],
-    hospitalisation_rate = extracted_values_group[10],
+    median_age = extracted_values_group[3],
+    sd_age = extracted_values_group[4],  # SD for age
+    iqr_age = extracted_values_group[5],  # IQR for age
+    
+    # Test-related fields
+    individuals_with_tests = extracted_values_group[6],
+    avg_test_nm = extracted_values_group[7],
+    median_test_nm = extracted_values_group[8],
+    sd_test_nm = extracted_values_group[9],  # SD for tests
+    iqr_test_nm = extracted_values_group[10],  # IQR for tests
+    
+    # Vaccine-related fields
+    individuals_with_vaccine = extracted_values_group[11],
+    avg_dose_nm = extracted_values_group[12],
+    median_dose_nm = extracted_values_group[13],
+    sd_dose_nm = extracted_values_group[14],  # SD for doses
+    iqr_dose_nm = extracted_values_group[15],  # IQR for doses
+    
+    # Vaccination and hospitalization rates
+    fully_vaccinated_count = extracted_values_group[16],
+    vaccination_rate = extracted_values_group[17],
+    hospitalised_true = extracted_values_group[18],
+    hospitalisation_rate = extracted_values_group[19],
+    
     stringsAsFactors = FALSE
   )
 }
@@ -548,17 +565,34 @@ global_metrics_df <- do.call(bind_rows, results_list)
 
 # Rename columns to make them more human-readable
 colnames(global_metrics_df) <- c(
-  "Group",               # cohort
-  "n",                   # count
-  "Avg Age",             # avg_age
-  "Tested",              # individuals_with_tests
-  "Avg Tests",           # avg_test_nm
-  "Vaccinated (1+ Dose)",# individuals_with_vaccine
-  "Avg Doses",           # avg_dose_nm
-  "Fully Vaccinated",    # fully_vaccinated_count
-  "Vaccination Rate (%)",# vaccination_rate
-  "COVID-19 Hospitalized",        # hospitalised_true
-  "Hospital Rate (%)"    # hospitalisation_rate
+  "Group",                    # cohort
+  "n",                        # count
+  
+  # Age-related fields
+  "Avg Age",                  # avg_age
+  "Median Age",               # median_age
+  "Age SD",                   # sd_age (Standard Deviation)
+  "Age IQR",                  # iqr_age (Interquartile Range)
+  
+  # Test-related fields
+  "Tested",                   # individuals_with_tests
+  "Avg Tests",                # avg_test_nm
+  "Median Tests",             # median_test_nm
+  "Tests SD",                 # sd_test_nm (Standard Deviation)
+  "Tests IQR",                # iqr_test_nm (Interquartile Range)
+  
+  # Vaccine-related fields
+  "Vaccinated (1+ Dose)",     # individuals_with_vaccine
+  "Avg Doses",                # avg_dose_nm
+  "Median Doses",             # median_dose_nm
+  "Doses SD",                 # sd_dose_nm (Standard Deviation)
+  "Doses IQR",                # iqr_dose_nm (Interquartile Range)
+  
+  # Vaccination and hospitalization rates
+  "Fully Vaccinated",         # fully_vaccinated_count
+  "Vaccination Rate (%)",     # vaccination_rate
+  "COVID-19 Hospitalized",    # hospitalised_true
+  "Hospitalization Rate (%)"  # hospitalisation_rate
 )
 
 
@@ -1967,8 +2001,12 @@ filtered_general_table <- global_metrics_df %>%
   arrange(order) %>%  # Arrange by the 'order' column
   select(-order)  # Remove the 'order' column
 
-# List of columns that can be chosen for the Y-axis
-y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+# List of columns that can be chosen for the Y-axis, excluding 'Group', 'SD', and 'IQR'
+y_axis_choices <- colnames(filtered_general_table)[
+  !colnames(filtered_general_table) %in% c("Group") &  # Exclude 'Group'
+  !grepl("SD", colnames(filtered_general_table)) &      # Exclude columns containing 'SD'
+  !grepl("IQR", colnames(filtered_general_table))       # Exclude columns containing 'IQR'
+]
 
 # Default plot using the first available column for the Y-axis
 plot_dynamic <- barplot_general_metrics(
@@ -2047,8 +2085,12 @@ filtered_general_table <- global_metrics_df %>%
   arrange(order) %>%  # Arrange by the 'order' column
   select(-order)  # Remove the 'order' column
 
-# List of columns that can be chosen for the Y-axis
-y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+# List of columns that can be chosen for the Y-axis, excluding 'Group', 'SD', and 'IQR'
+y_axis_choices <- colnames(filtered_general_table)[
+  !colnames(filtered_general_table) %in% c("Group") &  # Exclude 'Group'
+  !grepl("SD", colnames(filtered_general_table)) &      # Exclude columns containing 'SD'
+  !grepl("IQR", colnames(filtered_general_table))       # Exclude columns containing 'IQR'
+]
 
 # Default plot using the first available column for the Y-axis
 plot_dynamic <- barplot_general_metrics(
@@ -2126,8 +2168,12 @@ filtered_general_table <- global_metrics_df %>%
   arrange(order) %>%  # Arrange by the 'order' column
   select(-order)  # Remove the 'order' column
 
-# List of columns that can be chosen for the Y-axis
-y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+# List of columns that can be chosen for the Y-axis, excluding 'Group', 'SD', and 'IQR'
+y_axis_choices <- colnames(filtered_general_table)[
+  !colnames(filtered_general_table) %in% c("Group") &  # Exclude 'Group'
+  !grepl("SD", colnames(filtered_general_table)) &      # Exclude columns containing 'SD'
+  !grepl("IQR", colnames(filtered_general_table))       # Exclude columns containing 'IQR'
+]
 
 # Default plot using the first available column for the Y-axis
 plot_dynamic <- barplot_general_metrics(
@@ -2206,8 +2252,12 @@ filtered_general_table <- global_metrics_df %>%
   arrange(order) %>%  # Arrange by the 'order' column
   select(-order)  # Remove the 'order' column
 
-# List of columns that can be chosen for the Y-axis
-y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+# List of columns that can be chosen for the Y-axis, excluding 'Group', 'SD', and 'IQR'
+y_axis_choices <- colnames(filtered_general_table)[
+  !colnames(filtered_general_table) %in% c("Group") &  # Exclude 'Group'
+  !grepl("SD", colnames(filtered_general_table)) &      # Exclude columns containing 'SD'
+  !grepl("IQR", colnames(filtered_general_table))       # Exclude columns containing 'IQR'
+]
 
 # Default plot using the first available column for the Y-axis
 plot_dynamic <- barplot_general_metrics(
@@ -2286,8 +2336,12 @@ filtered_general_table <- global_metrics_df %>%
   select(-order)  # Remove the 'order' column
 
 
-# List of columns that can be chosen for the Y-axis
-y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+# List of columns that can be chosen for the Y-axis, excluding 'Group', 'SD', and 'IQR'
+y_axis_choices <- colnames(filtered_general_table)[
+  !colnames(filtered_general_table) %in% c("Group") &  # Exclude 'Group'
+  !grepl("SD", colnames(filtered_general_table)) &      # Exclude columns containing 'SD'
+  !grepl("IQR", colnames(filtered_general_table))       # Exclude columns containing 'IQR'
+]
 
 # Default plot using the first available column for the Y-axis
 plot_dynamic <- barplot_general_metrics(
@@ -2364,8 +2418,12 @@ filtered_general_table <- global_metrics_df %>%
   arrange(order) %>%  # Arrange by the 'order' column
   select(-order)  # Remove the 'order' column
 
-# List of columns that can be chosen for the Y-axis
-y_axis_choices <- colnames(filtered_general_table)[!colnames(filtered_general_table) %in% c("Group")]
+# List of columns that can be chosen for the Y-axis, excluding 'Group', 'SD', and 'IQR'
+y_axis_choices <- colnames(filtered_general_table)[
+  !colnames(filtered_general_table) %in% c("Group") &  # Exclude 'Group'
+  !grepl("SD", colnames(filtered_general_table)) &      # Exclude columns containing 'SD'
+  !grepl("IQR", colnames(filtered_general_table))       # Exclude columns containing 'IQR'
+]
 
 # Default plot using the first available column for the Y-axis
 plot_dynamic <- barplot_general_metrics(
