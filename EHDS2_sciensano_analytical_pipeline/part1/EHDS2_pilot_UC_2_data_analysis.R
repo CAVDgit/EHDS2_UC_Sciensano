@@ -1,7 +1,7 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "1.9" 
-# date of version : 24-10-24
+# script_version <- "2.0" 
+# date of version : 23-10-24
 
 library(tidyverse)
 library(DT)
@@ -556,9 +556,6 @@ rq <- rq %>% mutate(country = as.factor(country))
 
 
 
-# NEW V1.6
-
-# Calculate total cohort summary without grouping by sex
 total_summary <- df_clean %>%
   summarise(
     count = result$rounded_individuals_nm,
@@ -581,6 +578,15 @@ total_summary <- df_clean %>%
                                 round(quantile(test_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
     individuals_with_tests = ifelse(individuals_with_tests >= threshold, individuals_with_tests, -1),
     
+    # Positive Test statistics (set -1 if individuals_with_tests_positive < threshold)
+    individuals_with_tests_positive = sum(test_positive_to_covid_nm > 0, na.rm = TRUE),
+    avg_test_positives_nm = ifelse(individuals_with_tests_positive >= threshold, round(mean(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),
+    median_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(median(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),
+    sd_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(sd(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+    iqr_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, 
+                         paste0(round(quantile(test_positive_to_covid_nm, 0.25, na.rm = TRUE), 2), "-", 
+                                round(quantile(test_positive_to_covid_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
+    individuals_with_tests_positive = ifelse(individuals_with_tests_positive >= threshold, individuals_with_tests_positive, -1),
     
     # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
     individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
@@ -605,6 +611,7 @@ total_summary <- df_clean %>%
     hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
 
   )
+
 
 # Collapse the entire row into a single string with ";" separating the values
 total_summary_collapsed <- paste(total_summary, collapse = ";")
@@ -653,6 +660,15 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
                                   round(quantile(test_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
       individuals_with_tests = ifelse(individuals_with_tests >= threshold, individuals_with_tests, -1),
       
+      # Positive Test statistics (set -1 if individuals_with_tests_positive < threshold)
+      individuals_with_tests_positive = sum(test_positive_to_covid_nm > 0, na.rm = TRUE),
+      avg_test_positives_nm = ifelse(individuals_with_tests_positive >= threshold, round(mean(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),
+      median_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(median(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),
+      sd_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(sd(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+      iqr_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, 
+                           paste0(round(quantile(test_positive_to_covid_nm, 0.25, na.rm = TRUE), 2), "-", 
+                                  round(quantile(test_positive_to_covid_nm, 0.75, na.rm = TRUE), 2)), -1),  # IQR for Tests
+      individuals_with_tests_positive = ifelse(individuals_with_tests_positive >= threshold, individuals_with_tests_positive, -1),
       
       # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
       individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
