@@ -44,7 +44,7 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 ##### Script ######
 # version date: 23-10-24
-script_version <- "1.7"
+script_version <- "1.8"
 
 library(tidyverse)
 library(ggplot2)
@@ -52,6 +52,7 @@ library(plotly)
 library(DT)
 library(sf)
 library(leaflet)
+library(writexl)
 
 data_types <- c(
   RQ = "character",
@@ -1944,6 +1945,9 @@ map_vacc_subgroup <- list(
   list("ratio", "Vaccinated"),
   list("ratio3", "Not vaccinated")
 )
+
+
+write_xlsx(global_metrics_df, "global_metrics.xlsx")
 
 ```
 
