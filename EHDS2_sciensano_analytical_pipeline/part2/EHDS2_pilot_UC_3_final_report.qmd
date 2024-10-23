@@ -44,7 +44,7 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 ##### Script ######
 # version date: 23-10-24
-script_version <- "1.6"
+script_version <- "1.7"
 
 library(tidyverse)
 library(ggplot2)
@@ -1995,6 +1995,8 @@ The study population consists of all residents of a country tested and/or vaccin
 
 ## Global Metrics
 
+NOTE: If any bars are missing in the graphs, simply refresh the graph by selecting a different option from the dropdown menu.
+
 ::: panel-tabset
 
 ### Education level
@@ -2006,7 +2008,7 @@ The study population consists of all residents of a country tested and/or vaccin
 #| error: false
 #| fig-column: page-right
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 10
 
 filtered_general_table <- global_metrics_df %>%
   filter(Group == "Entire Cohort" | grepl("^Education:", Group)) %>%
@@ -2090,7 +2092,7 @@ datatable(filtered_general_table, options = list(autoWidth = TRUE))
 #| error: false
 #| fig-column: page-right
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 10
 
 filtered_general_table <- global_metrics_df %>%
   filter(Group == "Entire Cohort" | grepl("^Income:", Group)) %>%
@@ -2173,7 +2175,7 @@ datatable(filtered_general_table, options = list(autoWidth = TRUE))
 #| error: false
 #| fig-column: page-right
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 10
 
 filtered_general_table <- global_metrics_df %>%
   filter(Group == "Entire Cohort" | grepl("^Migration:", Group)) %>%
@@ -2257,7 +2259,7 @@ datatable(filtered_general_table, options = list(autoWidth = TRUE))
 #| error: false
 #| fig-column: page-right
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 10
 
 filtered_general_table <- global_metrics_df %>%
   filter(Group == "Entire Cohort" | grepl("^Household:", Group)) %>%
@@ -2341,7 +2343,7 @@ datatable(filtered_general_table, options = list(autoWidth = TRUE))
 #| error: false
 #| fig-column: page-right
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 10
 
 filtered_general_table <- global_metrics_df %>%
   filter(Group %in% c("Entire Cohort", "Male", "Female")) %>%
@@ -2423,7 +2425,7 @@ datatable(filtered_general_table, options = list(autoWidth = TRUE))
 #| error: false
 #| fig-column: page-right
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 10
 
 filtered_general_table <- global_metrics_df %>%
   filter(Group == "Entire Cohort" | grepl("^Residence:", Group)) %>%
