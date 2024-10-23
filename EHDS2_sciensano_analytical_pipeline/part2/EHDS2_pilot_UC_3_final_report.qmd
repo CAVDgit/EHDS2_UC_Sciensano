@@ -43,8 +43,8 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 
 ##### Script ######
-# version date: 21-10-24
-script_version <- "1.5"
+# version date: 23-10-24
+script_version <- "1.6"
 
 library(tidyverse)
 library(ggplot2)
@@ -475,6 +475,7 @@ extract_group_summary <- function(rq_df, rq_label, cohort_label) {
   data.frame(
     cohort = cohort_label,
     count = extracted_values_group[1],
+    
     # Age-related fields
     avg_age = extracted_values_group[2],
     median_age = extracted_values_group[3],
@@ -488,22 +489,31 @@ extract_group_summary <- function(rq_df, rq_label, cohort_label) {
     sd_test_nm = extracted_values_group[9],  # SD for tests
     iqr_test_nm = extracted_values_group[10],  # IQR for tests
     
+    # Positive Test-related fields
+    individuals_with_tests_positive = extracted_values_group[11],
+    avg_test_positives_nm = extracted_values_group[12],
+    median_test_positives_nm = extracted_values_group[13],
+    sd_test_positives_nm = extracted_values_group[14],  # SD for positive tests
+    iqr_test_positives_nm = extracted_values_group[15],  # IQR for positive tests
+    
     # Vaccine-related fields
-    individuals_with_vaccine = extracted_values_group[11],
-    avg_dose_nm = extracted_values_group[12],
-    median_dose_nm = extracted_values_group[13],
-    sd_dose_nm = extracted_values_group[14],  # SD for doses
-    iqr_dose_nm = extracted_values_group[15],  # IQR for doses
+    individuals_with_vaccine = extracted_values_group[16],
+    avg_dose_nm = extracted_values_group[17],
+    median_dose_nm = extracted_values_group[18],
+    sd_dose_nm = extracted_values_group[19],  # SD for doses
+    iqr_dose_nm = extracted_values_group[20],  # IQR for doses
     
     # Vaccination and hospitalization rates
-    fully_vaccinated_count = extracted_values_group[16],
-    vaccination_rate = extracted_values_group[17],
-    hospitalised_true = extracted_values_group[18],
-    hospitalisation_rate = extracted_values_group[19],
+    fully_vaccinated_count = extracted_values_group[21],
+    vaccination_rate = extracted_values_group[22],
+    hospitalised_true = extracted_values_group[23],
+    hospitalisation_rate = extracted_values_group[24],
     
     stringsAsFactors = FALSE
   )
 }
+
+
 
 # Extract all rows from rq where RQ starts with 'dataset_info_'
 rq_labels <- df %>%
@@ -557,6 +567,7 @@ for (label in rq_labels) {
   
   # Now use the adapted cohort_label
   summary_df <- extract_group_summary(df, label, cohort_label)
+
   results_list[[label]] <- summary_df  # Store the result in the list
 }
 
@@ -581,6 +592,13 @@ colnames(global_metrics_df) <- c(
   "Tests SD",                 # sd_test_nm (Standard Deviation)
   "Tests IQR",                # iqr_test_nm (Interquartile Range)
   
+  # Positive Test-related fields
+  "Tested Positive",          # individuals_with_tests_positive
+  "Avg Positive Tests",       # avg_test_positives_nm
+  "Median Positive Tests",    # median_test_positives_nm
+  "Positive Tests SD",        # sd_test_positives_nm (Standard Deviation)
+  "Positive Tests IQR",       # iqr_test_positives_nm (Interquartile Range)
+  
   # Vaccine-related fields
   "Vaccinated (1+ Dose)",     # individuals_with_vaccine
   "Avg Doses",                # avg_dose_nm
@@ -591,11 +609,9 @@ colnames(global_metrics_df) <- c(
   # Vaccination and hospitalization rates
   "Fully Vaccinated",         # fully_vaccinated_count
   "Vaccination Rate (%)",     # vaccination_rate
-  "COVID-19 Hospitalized",    # hospitalised_true
-  "Hospitalization Rate (%)"  # hospitalisation_rate
+  "COVID-19 Hospitalised",    # hospitalised_true
+  "Hospitalisation Rate (%)"  # hospitalisation_rate
 )
-
-
 
 
 rq1_summary <- df %>% 
