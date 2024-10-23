@@ -44,7 +44,7 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 ##### Script ######
 # version date: 23-10-24
-script_version <- "1.8"
+script_version <- "1.9"
 
 library(tidyverse)
 library(ggplot2)
@@ -1947,7 +1947,39 @@ map_vacc_subgroup <- list(
 )
 
 
-write_xlsx(global_metrics_df, "global_metrics.xlsx")
+# Combine columns (mean ± SD) and (median (IQR)), and remove original columns
+format_and_cleanup_columns <- function(df) {
+  # Combine Avg Age and Age SD
+  df <- df %>%
+    mutate(`Avg Age (± SD)` = paste0(`Avg Age`, " (± ", `Age SD`, ")"),
+           `Median Age (IQR)` = paste0(`Median Age`, " (", `Age IQR`, ")")) %>%
+    select(-`Avg Age`, -`Age SD`, -`Median Age`, -`Age IQR`)
+  
+  # Combine Avg Tests and Tests SD
+  df <- df %>%
+    mutate(`Avg Tests (± SD)` = paste0(`Avg Tests`, " (± ", `Tests SD`, ")"),
+           `Median Tests (IQR)` = paste0(`Median Tests`, " (", `Tests IQR`, ")")) %>%
+    select(-`Avg Tests`, -`Tests SD`, -`Median Tests`, -`Tests IQR`)
+  
+  # Combine Avg Doses and Doses SD
+  df <- df %>%
+    mutate(`Avg Doses (± SD)` = paste0(`Avg Doses`, " (± ", `Doses SD`, ")"),
+           `Median Doses (IQR)` = paste0(`Median Doses`, " (", `Doses IQR`, ")")) %>%
+    select(-`Avg Doses`, -`Doses SD`, -`Median Doses`, -`Doses IQR`)
+  
+  # Combine Avg Positive Tests and Positive Tests SD
+  df <- df %>%
+    mutate(`Avg Positive Tests (± SD)` = paste0(`Avg Positive Tests`, " (± ", `Positive Tests SD`, ")"),
+           `Median Positive Tests (IQR)` = paste0(`Median Positive Tests`, " (", `Positive Tests IQR`, ")")) %>%
+    select(-`Avg Positive Tests`, -`Positive Tests SD`, -`Median Positive Tests`, -`Positive Tests IQR`)
+  
+  return(df)
+}
+
+# Apply the formatting and cleanup
+formatted_global_metrics_df <- format_and_cleanup_columns(global_metrics_df)
+
+write_xlsx(formatted_global_metrics_df, "global_metrics.xlsx")
 
 ```
 
