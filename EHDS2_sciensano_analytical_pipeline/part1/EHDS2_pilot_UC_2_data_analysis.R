@@ -1,7 +1,7 @@
 # Script that generates the aggregate results into one csv file with 
 # statistics related to each research questions.
-# script_version <- "2.1" 
-# date of version : 23-10-24
+# script_version <- "2.2" 
+# date of version : 24-10-24
 
 library(tidyverse)
 library(DT)
@@ -92,12 +92,26 @@ df <- read.csv(file_path, colClasses = data_types, header = TRUE)
 df$sex_cd <- ifelse(df$sex_cd == 1, 'M',
                     ifelse(df$sex_cd == 2, 'F', NA))
 
-
 # remove NA from essential variable
 df_clean <- df %>% filter(!is.na(person_id),
                           !is.na(country_cd),
                           age_nm >= age_min & age_nm <age_max,
                           exitus_bl == F)
+
+
+# Visual inspection of Normality using only basic packages of R :
+# This will generate 2 jpeg graphs next to the aggregate data.
+# Q-Q plot on age
+jpeg("qqplot_age.jpeg", width = 800, height = 600)  # Open a JPEG device
+qqnorm(df_clean$age_nm, main = "Q-Q Plot for Age")
+qqline(df_clean$age_nm, col = "red")
+dev.off()
+
+# Histogram with normal curve on age
+jpeg("histogram_age.jpeg", width = 800, height = 600)  # Open a JPEG device
+hist(df_clean$age_nm, prob = TRUE, main = "Histogram of Age")
+curve(dnorm(x, mean=mean(df_clean$age_nm), sd=sd(df_clean$age_nm)), add=TRUE, col="blue")
+dev.off()
 
 
 # Research questions (RQ)
@@ -593,32 +607,32 @@ total_summary <- df_clean %>%
     
     # Test statistics (set -1 if individuals_with_tests < threshold)
     individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
-    avg_test_nm = ifelse(individuals_with_tests >= threshold, round(mean(test_nm, na.rm = TRUE), 2), -1),
-    median_test_nm = ifelse(individuals_with_tests >= threshold, round(threshold_median_NA(test_nm, threshold), 2), -1),
-    sd_test_nm = ifelse(individuals_with_tests >= threshold, round(sd(test_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+    avg_test_nm = ifelse(individuals_with_tests >= threshold, round(mean(test_nm > 0, na.rm = TRUE), 2), -1),
+    median_test_nm = ifelse(individuals_with_tests >= threshold, round(threshold_median_NA(test_nm > 0, threshold), 2), -1),
+    sd_test_nm = ifelse(individuals_with_tests >= threshold, round(sd(test_nm > 0, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
     iqr_test_nm = ifelse(individuals_with_tests >= threshold, 
-                         paste0(round(threshold_quartile_NA(test_nm, 0.25, threshold), 2), "-", 
-                                round(threshold_quartile_NA(test_nm, 0.75, threshold), 2)), -1),  # IQR for Tests
+                         paste0(round(threshold_quartile_NA(test_nm > 0, 0.25, threshold), 2), "-", 
+                                round(threshold_quartile_NA(test_nm > 0, 0.75, threshold), 2)), -1),  # IQR for Tests
     individuals_with_tests = ifelse(individuals_with_tests >= threshold, individuals_with_tests, -1),
     
     # Positive Test statistics (set -1 if individuals_with_tests_positive < threshold)
     individuals_with_tests_positive = sum(test_positive_to_covid_nm > 0, na.rm = TRUE),
-    avg_test_positives_nm = ifelse(individuals_with_tests_positive >= threshold, round(mean(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),
-    median_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(threshold_median_NA(test_positive_to_covid_nm, threshold), 2), -1),
-    sd_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(sd(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+    avg_test_positives_nm = ifelse(individuals_with_tests_positive >= threshold, round(mean(test_positive_to_covid_nm > 0, na.rm = TRUE), 2), -1),
+    median_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(threshold_median_NA(test_positive_to_covid_nm > 0, threshold), 2), -1),
+    sd_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(sd(test_positive_to_covid_nm > 0, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
     iqr_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, 
-                         paste0(round(threshold_quartile_NA(test_positive_to_covid_nm, 0.25, threshold), 2), "-", 
-                                round(threshold_quartile_NA(test_positive_to_covid_nm, 0.75, threshold), 2)), -1),  # IQR for Tests
+                         paste0(round(threshold_quartile_NA(test_positive_to_covid_nm > 0, 0.25, threshold), 2), "-", 
+                                round(threshold_quartile_NA(test_positive_to_covid_nm > 0, 0.75, threshold), 2)), -1),  # IQR for Tests
     individuals_with_tests_positive = ifelse(individuals_with_tests_positive >= threshold, individuals_with_tests_positive, -1),
     
     # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
     individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
-    avg_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(mean(doses_nm, na.rm = TRUE), 2), -1),
-    median_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(threshold_median_NA(doses_nm, threshold), 2), -1),
-    sd_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(sd(doses_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Doses
+    avg_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(mean(doses_nm > 0, na.rm = TRUE), 2), -1),
+    median_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(threshold_median_NA(doses_nm > 0, threshold), 2), -1),
+    sd_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(sd(doses_nm > 0, na.rm = TRUE), 2), -1),  # Standard Deviation for Doses
     iqr_dose_nm = ifelse(individuals_with_vaccine >= threshold, 
-                         paste0(round(threshold_quartile_NA(doses_nm, 0.25, threshold), 2), "-", 
-                                round(threshold_quartile_NA(doses_nm, 0.75, threshold), 2)), -1),  # IQR for Doses
+                         paste0(round(threshold_quartile_NA(doses_nm > 0, 0.25, threshold), 2), "-", 
+                                round(threshold_quartile_NA(doses_nm > 0, 0.75, threshold), 2)), -1),  # IQR for Doses
     individuals_with_vaccine = ifelse(individuals_with_vaccine >= threshold, individuals_with_vaccine, -1),
     
     
@@ -631,8 +645,12 @@ total_summary <- df_clean %>%
     # Hospitalisation rate (set -1 if hospitalised_true < threshold)
     hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
     hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 3), -1),
-    hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
-
+    hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1),
+    
+    # Hospitalisation rate in vaccinated population (set -1 if hospitalised_true < threshold)
+    hospitalised_true_vaccinated_true = sum(hospi_due_to_covid_bl == TRUE & fully_vaccinated_bl == TRUE, na.rm = TRUE),
+    hospitalised_true_vaccinated_true_rate = ifelse(hospitalised_true_vaccinated_true >= threshold, round(hospitalised_true_vaccinated_true / count * 100, 3), -1),
+    hospitalised_true_vaccinated_true = ifelse(hospitalised_true_vaccinated_true >= threshold, hospitalised_true_vaccinated_true, -1)
   )
 
 
@@ -646,8 +664,6 @@ dataset_info_all <- data.frame(
 )
 
 rq <- bind_rows(rq, dataset_info_all)
-
-
 
 # Function to calculate summary statistics for any column, excluding NAs
 create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
@@ -676,32 +692,32 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
       
       # Test statistics (set -1 if individuals_with_tests < threshold)
       individuals_with_tests = sum(test_nm > 0, na.rm = TRUE),
-      avg_test_nm = ifelse(individuals_with_tests >= threshold, round(mean(test_nm, na.rm = TRUE), 2), -1),
-      median_test_nm = ifelse(individuals_with_tests >= threshold, round(threshold_median_NA(test_nm, threshold), 2), -1),
-      sd_test_nm = ifelse(individuals_with_tests >= threshold, round(sd(test_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+      avg_test_nm = ifelse(individuals_with_tests >= threshold, round(mean(test_nm > 0, na.rm = TRUE), 2), -1),
+      median_test_nm = ifelse(individuals_with_tests >= threshold, round(threshold_median_NA(test_nm > 0, threshold), 2), -1),
+      sd_test_nm = ifelse(individuals_with_tests >= threshold, round(sd(test_nm > 0, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
       iqr_test_nm = ifelse(individuals_with_tests >= threshold, 
-                           paste0(round(threshold_quartile_NA(test_nm, 0.25, threshold), 2), "-", 
-                                  round(threshold_quartile_NA(test_nm, 0.75, threshold), 2)), -1),  # IQR for Tests
+                           paste0(round(threshold_quartile_NA(test_nm > 0, 0.25, threshold), 2), "-", 
+                                  round(threshold_quartile_NA(test_nm > 0, 0.75, threshold), 2)), -1),  # IQR for Tests
       individuals_with_tests = ifelse(individuals_with_tests >= threshold, individuals_with_tests, -1),
       
       # Positive Test statistics (set -1 if individuals_with_tests_positive < threshold)
       individuals_with_tests_positive = sum(test_positive_to_covid_nm > 0, na.rm = TRUE),
-      avg_test_positives_nm = ifelse(individuals_with_tests_positive >= threshold, round(mean(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),
-      median_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(threshold_median_NA(test_positive_to_covid_nm, threshold), 2), -1),
-      sd_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(sd(test_positive_to_covid_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
+      avg_test_positives_nm = ifelse(individuals_with_tests_positive >= threshold, round(mean(test_positive_to_covid_nm > 0, na.rm = TRUE), 2), -1),
+      median_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(threshold_median_NA(test_positive_to_covid_nm > 0, threshold), 2), -1),
+      sd_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, round(sd(test_positive_to_covid_nm > 0, na.rm = TRUE), 2), -1),  # Standard Deviation for Tests
       iqr_test_positive_nm = ifelse(individuals_with_tests_positive >= threshold, 
-                                    paste0(round(threshold_quartile_NA(test_positive_to_covid_nm, 0.25, threshold), 2), "-", 
-                                           round(threshold_quartile_NA(test_positive_to_covid_nm, 0.75, threshold), 2)), -1),  # IQR for Tests
+                                    paste0(round(threshold_quartile_NA(test_positive_to_covid_nm > 0, 0.25, threshold), 2), "-", 
+                                           round(threshold_quartile_NA(test_positive_to_covid_nm > 0, 0.75, threshold), 2)), -1),  # IQR for Tests
       individuals_with_tests_positive = ifelse(individuals_with_tests_positive >= threshold, individuals_with_tests_positive, -1),
       
       # Vaccine statistics (set -1 if individuals_with_vaccine < threshold)
       individuals_with_vaccine = sum(doses_nm > 0, na.rm = TRUE),
-      avg_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(mean(doses_nm, na.rm = TRUE), 2), -1),
-      median_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(threshold_median_NA(doses_nm, threshold), 2), -1),
-      sd_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(sd(doses_nm, na.rm = TRUE), 2), -1),  # Standard Deviation for Doses
+      avg_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(mean(doses_nm > 0, na.rm = TRUE), 2), -1),
+      median_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(threshold_median_NA(doses_nm > 0, threshold), 2), -1),
+      sd_dose_nm = ifelse(individuals_with_vaccine >= threshold, round(sd(doses_nm > 0, na.rm = TRUE), 2), -1),  # Standard Deviation for Doses
       iqr_dose_nm = ifelse(individuals_with_vaccine >= threshold, 
-                           paste0(round(threshold_quartile_NA(doses_nm, 0.25, threshold), 2), "-", 
-                                  round(threshold_quartile_NA(doses_nm, 0.75, threshold), 2)), -1),  # IQR for Doses
+                           paste0(round(threshold_quartile_NA(doses_nm > 0, 0.25, threshold), 2), "-", 
+                                  round(threshold_quartile_NA(doses_nm > 0, 0.75, threshold), 2)), -1),  # IQR for Doses
       individuals_with_vaccine = ifelse(individuals_with_vaccine >= threshold, individuals_with_vaccine, -1),
       
       
@@ -714,7 +730,12 @@ create_group_summary <- function(df_clean, group_col, group_value, rq_label) {
       # Hospitalisation rate (set -1 if hospitalised_true < threshold)
       hospitalised_true = sum(hospi_due_to_covid_bl == TRUE, na.rm = TRUE),
       hospitalisation_rate = ifelse(hospitalised_true >= threshold, round(hospitalised_true / count * 100, 3), -1),
-      hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1)
+      hospitalised_true = ifelse(hospitalised_true >= threshold, hospitalised_true, -1),
+      
+      # Hospitalisation rate in vaccinated population (set -1 if hospitalised_true < threshold)
+      hospitalised_true_vaccinated_true = sum(hospi_due_to_covid_bl == TRUE & fully_vaccinated_bl == TRUE, na.rm = TRUE),
+      hospitalised_true_vaccinated_true_rate = ifelse(hospitalised_true_vaccinated_true >= threshold, round(hospitalised_true_vaccinated_true / count * 100, 3), -1),
+      hospitalised_true_vaccinated_true = ifelse(hospitalised_true_vaccinated_true >= threshold, hospitalised_true_vaccinated_true, -1)
     )
   
   
