@@ -44,7 +44,7 @@ shapefile_path <- "EHDS2_pilot_UC1_nuts_code.shp"
 
 ##### Script ######
 # version date: 23-10-24
-script_version <- "1.9"
+script_version <- "2.0"
 
 library(tidyverse)
 library(ggplot2)
@@ -494,21 +494,25 @@ extract_group_summary <- function(rq_df, rq_label, cohort_label) {
     individuals_with_tests_positive = extracted_values_group[11],
     avg_test_positives_nm = extracted_values_group[12],
     median_test_positives_nm = extracted_values_group[13],
-    sd_test_positives_nm = extracted_values_group[14],  # SD for positive tests
-    iqr_test_positives_nm = extracted_values_group[15],  # IQR for positive tests
+    sd_test_positives_nm = extracted_values_group[14],
+    iqr_test_positives_nm = extracted_values_group[15],
     
     # Vaccine-related fields
     individuals_with_vaccine = extracted_values_group[16],
     avg_dose_nm = extracted_values_group[17],
     median_dose_nm = extracted_values_group[18],
-    sd_dose_nm = extracted_values_group[19],  # SD for doses
-    iqr_dose_nm = extracted_values_group[20],  # IQR for doses
+    sd_dose_nm = extracted_values_group[19],
+    iqr_dose_nm = extracted_values_group[20],
     
     # Vaccination and hospitalization rates
     fully_vaccinated_count = extracted_values_group[21],
     vaccination_rate = extracted_values_group[22],
     hospitalised_true = extracted_values_group[23],
     hospitalisation_rate = extracted_values_group[24],
+    
+    # Vaccinated population hospitalization
+    hospitalised_true_vaccinated = extracted_values_group[25],
+    hospitalised_true_vaccinated_rate = extracted_values_group[26],
     
     stringsAsFactors = FALSE
   )
@@ -611,7 +615,12 @@ colnames(global_metrics_df) <- c(
   "Fully Vaccinated",         # fully_vaccinated_count
   "Vaccination Rate (%)",     # vaccination_rate
   "COVID-19 Hospitalised",    # hospitalised_true
-  "Hospitalisation Rate (%)"  # hospitalisation_rate
+  "Hospitalisation Rate (%)",  # hospitalisation_rate
+  
+  # Vaccinated population hospitalization
+  "Vaccinated Hospitalised",  # hospitalised_true_vaccinated
+  "Vaccinated Hosp. Rate (%)" # hospitalised_true_vaccinated_rate
+  
 )
 
 
