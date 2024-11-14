@@ -1,5 +1,3 @@
-Last updated code : 09-08-24
-
 # HealthData@EU Pilot (EHDS2) - Sciensano Use Case
 The repository contains the scripts that will be used in the HealthData@EU Pilot Sciensano Use Case.
 It has been created to easier the files sharing to perform specificaly this activity among contributors and users.
